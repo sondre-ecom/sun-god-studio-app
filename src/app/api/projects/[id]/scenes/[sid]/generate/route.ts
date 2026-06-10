@@ -12,6 +12,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const p = getProject(id);
   if (!p) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (!(await userForProject(p, req))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const renderUserId = p.ownerId; // renders go through the project owner's own Higgsfield
+  if (!renderUserId) return NextResponse.json({ error: "Project has no owner." }, { status: 400 });
   const scene = p.scenes.find((s) => s.id === sid);
   if (!scene) return NextResponse.json({ error: "scene not found" }, { status: 404 });
   const body = await req.json().catch(() => ({}));
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   try {
-    const ids = await generateImage({
+    const ids = await generateImage(renderUserId, {
       model: p.imageModel,
       prompt,
       aspect: p.aspect,

@@ -4,11 +4,19 @@ import crypto from "node:crypto";
 
 export type JobState = "queued" | "in_progress" | "completed" | "failed" | "nsfw" | "canceled";
 
+export interface HfAuth {
+  clientInfo?: unknown;
+  tokens?: unknown;
+  codeVerifier?: string;
+}
+
 export interface User {
   id: string;
   username: string;
   passHash: string; // scrypt: salt:hash (hex)
   role: "admin" | "member";
+  anthropicKey?: string; // BYOK: this user's own Anthropic API key (members must set; admin optional)
+  hf?: HfAuth; // BYOK: this user's own Higgsfield OAuth connection
   createdAt: number;
 }
 
@@ -193,6 +201,10 @@ export function uid(): string {
 
 export function getProject(id: string): Project | undefined {
   return db().projects.find((p) => p.id === id);
+}
+
+export function userById(id: string): User | undefined {
+  return db().users.find((u) => u.id === id);
 }
 
 export function touch(p: Project) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, save, uid, Project, Scene } from "@/lib/store";
-import { makeStoryboard } from "@/lib/brain";
+import { makeStoryboard, resolveBrainAuth } from "@/lib/brain";
 import { serializeProject } from "@/lib/serialize";
 import { currentUser } from "@/lib/auth";
 
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
 
   let sb;
   try {
+    const auth = resolveBrainAuth(u);
     sb = await makeStoryboard({
       vision: body.vision || "",
       brandId: body.brandId,
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
       sceneCount: body.sceneCount ?? "auto",
       clipDuration: body.clipDuration ?? 5,
       infinityLoop: !!body.infinityLoop,
-    });
+    }, auth);
   } catch (e) {
     return NextResponse.json({ error: "Brain failed: " + (e as Error).message }, { status: 500 });
   }

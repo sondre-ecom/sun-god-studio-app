@@ -1,35 +1,54 @@
 import fs from "node:fs";
 import path from "node:path";
-import { db } from "./store";
+import { db, User } from "./store";
 
 const MODEL = process.env.BRAIN_MODEL || "claude-fable-5";
 
-/**
- * The brain has two backends:
- *  - Cloud / server: ANTHROPIC_API_KEY set → call the Messages API directly (robust in containers).
- *  - Local dev: no key → use the Claude Agent SDK with your local Claude Code login.
- */
-async function ask(prompt: string): Promise<string> {
-  if (process.env.ANTHROPIC_API_KEY) return askViaApi(prompt);
-  return askViaSdk(prompt);
+/** Per-user brain credentials. members must bring their own key; admin may fall back. */
+export interface BrainAuth {
+  apiKey?: string; // this user's own Anthropic key (or admin's env key)
+  useLocal?: boolean; // admin only, local dev: use Claude Code login
 }
 
-async function askViaApi(prompt: string): Promise<string> {
+/**
+ * Decide which credentials power the brain for a given user.
+ *  - Any user with their own key → use it (BYOK).
+ *  - Admin without a key → fall back to the server env key, else the local Claude login.
+ *  - Member without a key → blocked (they must add their own).
+ */
+export function resolveBrainAuth(user: Pick<User, "role" | "anthropicKey">): BrainAuth {
+  if (user.anthropicKey) return { apiKey: user.anthropicKey };
+  if (user.role === "admin") {
+    if (process.env.ANTHROPIC_API_KEY) return { apiKey: process.env.ANTHROPIC_API_KEY };
+    return { useLocal: true };
+  }
+  throw new Error("Add your own Anthropic API key in Settings to generate storyboards.");
+}
+
+async function ask(prompt: string, auth: BrainAuth): Promise<string> {
+  if (auth.apiKey) return askViaApi(prompt, auth.apiKey);
+  if (auth.useLocal) return askViaSdk(prompt);
+  throw new Error("No brain credentials available.");
+}
+
+async function askViaApi(prompt: string, apiKey: string): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      "x-api-key": process.env.ANTHROPIC_API_KEY!,
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: 16000, // storyboards with detailed visuals easily exceed 4096 and get truncated mid-JSON
       messages: [{ role: "user", content: prompt }],
     }),
   });
   if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const data = (await res.json()) as { content?: { type: string; text?: string }[]; stop_reason?: string };
+  if (data.stop_reason === "max_tokens")
+    throw new Error("Brain response hit the output limit and was truncated — try fewer scenes or a shorter idea.");
   const out = (data.content || []).filter((b) => b.type === "text").map((b) => b.text || "").join("");
   if (!out) throw new Error("Anthropic API returned no text.");
   return out;
@@ -92,7 +111,7 @@ export async function makeStoryboard(input: {
   sceneCount: number | "auto";
   clipDuration: number;
   infinityLoop: boolean;
-}): Promise<StoryboardOut> {
+}, auth: BrainAuth): Promise<StoryboardOut> {
   const count = input.sceneCount === "auto" ? "5 to 7" : String(input.sceneCount);
   const prompt = `You are an elite animated-ad director for paid social (Meta/TikTok, 9:16 vertical).
 
@@ -117,7 +136,7 @@ ${input.infinityLoop ? "- INFINITY LOOP MODE: the LAST scene must be composed so
 
 Respond with ONLY this JSON, no commentary:
 {"title": "...", "script": "full VO script as one text", "styleBlock": "refined style block (start from the given one, you may sharpen it)", "characterSheet": "ONE consolidated character sheet paragraph used verbatim in every image prompt (empty string if no recurring characters)", "scenes": [{"copy": "...", "visual": "...", "motion": "...", "transitionToNext": "...", "duration": ${input.clipDuration}}]}`;
-  return parseJson<StoryboardOut>(await ask(prompt));
+  return parseJson<StoryboardOut>(await ask(prompt, auth));
 }
 
 export async function reviseVisual(input: {
@@ -125,7 +144,7 @@ export async function reviseVisual(input: {
   characterSheet: string;
   visual: string;
   feedback: string;
-}): Promise<string> {
+}, auth: BrainAuth): Promise<string> {
   const prompt = `You refine image prompts for an animated ad keyframe. Current prompt body (style block "${input.styleBlock}" and character sheet are prepended automatically — do not include them):
 
 ${input.visual}
@@ -133,6 +152,6 @@ ${input.visual}
 The user rejected the generated image with this feedback: "${input.feedback}"
 
 Rewrite the prompt body to fix exactly what the feedback asks while keeping everything else. Respond with ONLY JSON: {"visual": "..."}`;
-  const out = parseJson<{ visual: string }>(await ask(prompt));
+  const out = parseJson<{ visual: string }>(await ask(prompt, auth));
   return out.visual;
 }

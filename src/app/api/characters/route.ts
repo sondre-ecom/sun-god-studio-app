@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   let refMediaId: string | undefined;
   if (c.refUrl) {
     try {
-      refMediaId = await importUrl(c.refUrl);
+      refMediaId = await importUrl(u.id, c.refUrl);
     } catch {}
   }
   const character = {
@@ -41,7 +41,7 @@ export async function PUT(req: NextRequest) {
   if (c.refUrl && c.refUrl !== ch.refUrl) {
     ch.refMediaId = undefined;
     try {
-      ch.refMediaId = await importUrl(c.refUrl);
+      ch.refMediaId = await importUrl(u.id, c.refUrl);
     } catch {}
   }
   Object.assign(ch, { name: c.name ?? ch.name, sheet: c.sheet ?? ch.sheet, brandId: c.brandId ?? ch.brandId, refUrl: c.refUrl ?? ch.refUrl });

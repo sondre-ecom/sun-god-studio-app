@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, getProject, touch } from "@/lib/store";
-import { reviseVisual } from "@/lib/brain";
+import { reviseVisual, resolveBrainAuth } from "@/lib/brain";
 import { generateImage } from "@/lib/hf";
 import { buildImagePrompt } from "@/lib/prompt";
 import { serializeProject } from "@/lib/serialize";
@@ -13,7 +13,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id, sid } = await params;
   const p = getProject(id);
   if (!p) return NextResponse.json({ error: "not found" }, { status: 404 });
-  if (!(await userForProject(p, req))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const user = await userForProject(p, req);
+  if (!user) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const renderUserId = p.ownerId;
+  if (!renderUserId) return NextResponse.json({ error: "Project has no owner." }, { status: 400 });
   const scene = p.scenes.find((s) => s.id === sid);
   if (!scene) return NextResponse.json({ error: "scene not found" }, { status: 404 });
   const { feedback, count } = await req.json();
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       characterSheet: p.characterSheet,
       visual: scene.visual,
       feedback: feedback || "make it better",
-    });
+    }, resolveBrainAuth(user));
   } catch (e) {
     return NextResponse.json({ error: "Brain failed: " + (e as Error).message }, { status: 500 });
   }
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   try {
-    const ids = await generateImage({
+    const ids = await generateImage(renderUserId, {
       model: p.imageModel,
       prompt: buildImagePrompt({ styleBlock: p.styleBlock, characterSheet: p.characterSheet, visual: scene.visual }),
       aspect: p.aspect,

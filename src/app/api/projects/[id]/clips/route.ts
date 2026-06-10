@@ -12,12 +12,12 @@ function chosen(scene: Scene): Variant | undefined {
 }
 
 /** A stable reference Kling can consume: prefer an imported media id, else the image job id. */
-async function ensureRef(v: Variant, origin: string): Promise<string> {
+async function ensureRef(renderUserId: string, v: Variant, origin: string): Promise<string> {
   if (v.mediaId) return v.mediaId;
   const url = v.url || (v.localPath ? new URL(mediaUrl(v.localPath)!, origin).toString() : undefined);
   if (url) {
     try {
-      v.mediaId = await importUrl(url);
+      v.mediaId = await importUrl(renderUserId, url);
       return v.mediaId;
     } catch {}
   }
@@ -33,6 +33,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const p = getProject(id);
   if (!p) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (!(await userForProject(p, req))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const renderUserId = p.ownerId;
+  if (!renderUserId) return NextResponse.json({ error: "Project has no owner." }, { status: 400 });
   const origin = req.nextUrl.origin;
   const body = await req.json().catch(() => ({}));
 
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       errors.push(`Scene ${from.n} has no approved still yet.`);
       continue;
     }
-    const startRef = await ensureRef(cv, origin);
+    const startRef = await ensureRef(renderUserId, cv, origin);
     let endRef: string | undefined;
     if (to) {
       const tv = chosen(to);
@@ -65,7 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         errors.push(`Scene ${to.n} has no approved still yet.`);
         continue;
       }
-      endRef = await ensureRef(tv, origin);
+      endRef = await ensureRef(renderUserId, tv, origin);
     }
 
     // Replace any prior clip for this transition
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       forceDisclaimer: body.disclaimer,
     });
     try {
-      const ids = await generateVideo({
+      const ids = await generateVideo(renderUserId, {
         model: p.videoModel,
         prompt,
         aspect: p.aspect,

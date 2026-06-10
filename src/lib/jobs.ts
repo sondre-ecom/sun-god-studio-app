@@ -28,13 +28,15 @@ function addLibrary(opts: { kind: "image" | "video"; projectId: string; ownerId?
 /** Sweep all pending jobs of a project: poll, download finished media, update records. */
 export async function refreshProject(project: Project): Promise<void> {
   let dirty = false;
+  const renderUserId = project.ownerId; // poll with the project owner's own Higgsfield connection
+  if (!renderUserId) return;
 
   for (const scene of project.scenes) {
     if (!scene.pendingJobs.length) continue;
     const still: string[] = [];
     for (const jobId of scene.pendingJobs) {
       try {
-        const st = await jobStatus(jobId);
+        const st = await jobStatus(renderUserId, jobId);
         if (st.status === "completed") {
           let i = 0;
           for (const url of st.urls) {
@@ -61,7 +63,7 @@ export async function refreshProject(project: Project): Promise<void> {
   for (const clip of project.clips) {
     if (!clip.pendingJob) continue;
     try {
-      const st = await jobStatus(clip.pendingJob);
+      const st = await jobStatus(renderUserId, clip.pendingJob);
       if (st.status === "completed") {
         const vid = st.urls.find((u) => /\.(mp4|webm|mov)(\?|$)/i.test(u)) ?? st.urls[0];
         if (vid) {

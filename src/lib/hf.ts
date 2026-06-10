@@ -1,137 +1,158 @@
 /**
- * Higgsfield renderer connection — a real MCP client against mcp.higgsfield.ai.
- * OAuth (sign in with your Higgsfield account), tokens persisted in the local DB.
+ * Higgsfield renderer — BYOK / per-user. Each user connects their OWN Higgsfield
+ * account; their OAuth tokens live on their user record, and each user gets their
+ * own MCP client. Nobody shares anyone else's Higgsfield connection.
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { db, save } from "./store";
+import { db, save, userById, HfAuth } from "./store";
 
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const REDIRECT = `${APP_URL}/api/higgsfield/callback`;
 
-let pendingAuthUrl: string | null = null;
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const provider: any = {
-  get redirectUrl() {
-    return REDIRECT;
-  },
-  get clientMetadata() {
-    return {
-      redirect_uris: [REDIRECT],
-      client_name: "Sun God Studio",
-      grant_types: ["authorization_code", "refresh_token"],
-      response_types: ["code"],
-      token_endpoint_auth_method: "none",
-    };
-  },
-  clientInformation() {
-    return db().settings.hf.clientInfo;
-  },
-  saveClientInformation(info: unknown) {
-    db().settings.hf.clientInfo = info;
-    save();
-  },
-  tokens() {
-    return db().settings.hf.tokens;
-  },
-  saveTokens(t: unknown) {
-    db().settings.hf.tokens = t;
-    save();
-  },
-  redirectToAuthorization(url: URL) {
-    pendingAuthUrl = url.toString();
-  },
-  saveCodeVerifier(v: string) {
-    db().settings.hf.codeVerifier = v;
-    save();
-  },
-  codeVerifier() {
-    const v = db().settings.hf.codeVerifier;
-    if (!v) throw new Error("No code verifier saved");
-    return v;
-  },
-};
-
-type G = typeof globalThis & { __hfClient?: Client; __hfTools?: any[] };
-const g = globalThis as G;
-
-function newTransport() {
-  return new StreamableHTTPClientTransport(new URL(db().settings.hf.serverUrl), {
-    authProvider: provider,
-  });
+function serverUrl(): string {
+  return db().settings.hf.serverUrl || "https://mcp.higgsfield.ai/mcp";
 }
 
-async function getClient(): Promise<Client> {
-  if (g.__hfClient) return g.__hfClient;
+function hfStore(userId: string): HfAuth {
+  const u = userById(userId);
+  if (!u) throw new Error("Unknown user");
+  if (!u.hf) u.hf = {};
+  return u.hf;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function providerFor(userId: string, holder?: { url?: string }): any {
+  return {
+    get redirectUrl() {
+      return REDIRECT;
+    },
+    get clientMetadata() {
+      return {
+        redirect_uris: [REDIRECT],
+        client_name: "Sun God Studio",
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        token_endpoint_auth_method: "none",
+      };
+    },
+    clientInformation() {
+      return hfStore(userId).clientInfo;
+    },
+    saveClientInformation(info: unknown) {
+      hfStore(userId).clientInfo = info;
+      save();
+    },
+    tokens() {
+      return hfStore(userId).tokens;
+    },
+    saveTokens(t: unknown) {
+      hfStore(userId).tokens = t;
+      save();
+    },
+    redirectToAuthorization(url: URL) {
+      if (holder) holder.url = url.toString();
+    },
+    saveCodeVerifier(v: string) {
+      hfStore(userId).codeVerifier = v;
+      save();
+    },
+    codeVerifier() {
+      const v = hfStore(userId).codeVerifier;
+      if (!v) throw new Error("No code verifier saved");
+      return v;
+    },
+  };
+}
+
+type G = typeof globalThis & { __hfClients?: Map<string, Client>; __hfTools?: Map<string, any[]> };
+const g = globalThis as G;
+const clients = (g.__hfClients ||= new Map());
+const toolsCache = (g.__hfTools ||= new Map());
+
+function transport(userId: string, holder?: { url?: string }) {
+  return new StreamableHTTPClientTransport(new URL(serverUrl()), { authProvider: providerFor(userId, holder) });
+}
+
+async function connectClient(userId: string, holder?: { url?: string }): Promise<Client> {
   const c = new Client({ name: "sun-god-studio", version: "1.0.0" });
-  await c.connect(newTransport());
-  g.__hfClient = c;
+  await c.connect(transport(userId, holder));
   return c;
 }
 
-export function resetClient() {
-  try {
-    g.__hfClient?.close();
-  } catch {}
-  g.__hfClient = undefined;
-  g.__hfTools = undefined;
+async function getClient(userId: string): Promise<Client> {
+  const existing = clients.get(userId);
+  if (existing) return existing;
+  const c = await connectClient(userId);
+  clients.set(userId, c);
+  return c;
 }
 
-/** Try to connect. Returns null if connected, or the OAuth URL the user must visit. */
-export async function startAuth(): Promise<string | null> {
-  pendingAuthUrl = null;
+function reset(userId: string) {
   try {
-    await getClient();
+    clients.get(userId)?.close();
+  } catch {}
+  clients.delete(userId);
+  toolsCache.delete(userId);
+}
+
+/** Try to connect this user. Returns null if connected, or the OAuth URL they must visit. */
+export async function startAuth(userId: string): Promise<string | null> {
+  const holder: { url?: string } = {};
+  try {
+    const c = await connectClient(userId, holder);
+    clients.set(userId, c);
     return null;
   } catch (e) {
-    if (pendingAuthUrl) return pendingAuthUrl;
+    if (holder.url) return holder.url;
     throw e;
   }
 }
 
-export async function finishAuthCode(code: string): Promise<void> {
-  await newTransport().finishAuth(code);
-  resetClient();
-  await getClient();
+export async function finishAuthCode(userId: string, code: string): Promise<void> {
+  await transport(userId).finishAuth(code);
+  reset(userId);
+  await getClient(userId);
 }
 
-export async function isConnected(): Promise<boolean> {
-  if (!db().settings.hf.tokens) return false;
+export async function isConnected(userId: string): Promise<boolean> {
+  if (!hfStore(userId).tokens) return false;
   try {
-    await listToolDefs();
+    await listToolDefs(userId);
     return true;
   } catch {
     return false;
   }
 }
 
-export function disconnect() {
-  resetClient();
-  db().settings.hf.tokens = undefined;
-  db().settings.hf.codeVerifier = undefined;
+export function disconnect(userId: string) {
+  reset(userId);
+  const s = hfStore(userId);
+  s.tokens = undefined;
+  s.codeVerifier = undefined;
   save();
 }
 
-async function listToolDefs(): Promise<any[]> {
-  if (g.__hfTools) return g.__hfTools;
-  const c = await getClient();
+async function listToolDefs(userId: string): Promise<any[]> {
+  const cached = toolsCache.get(userId);
+  if (cached) return cached;
+  const c = await getClient(userId);
   const res = await c.listTools();
-  g.__hfTools = res.tools as any[];
-  return g.__hfTools!;
+  const defs = res.tools as any[];
+  toolsCache.set(userId, defs);
+  return defs;
 }
 
-/** Call a tool by short name, adapting to the server's exact tool name and arg shape. */
-export async function callTool(shortName: string, args: Record<string, any>): Promise<any[]> {
-  const defs = await listToolDefs();
+export async function callTool(userId: string, shortName: string, args: Record<string, any>): Promise<any[]> {
+  const defs = await listToolDefs(userId);
   const def =
     defs.find((t) => t.name === shortName) ||
     defs.find((t) => t.name.endsWith(`__${shortName}`)) ||
     defs.find((t) => t.name.toLowerCase().includes(shortName.toLowerCase()));
-  if (!def) throw new Error(`Higgsfield tool not found: ${shortName} (have: ${defs.map((t) => t.name).join(", ")})`);
+  if (!def) throw new Error(`Higgsfield tool not found: ${shortName}`);
   const props = def.inputSchema?.properties ?? {};
   const finalArgs = props.params && !("params" in args) ? { params: args } : args;
-  const c = await getClient();
+  const c = await getClient(userId);
   const res: any = await c.callTool({ name: def.name, arguments: finalArgs });
   const parsed: any[] = [];
   for (const block of res?.content ?? []) {
@@ -150,11 +171,11 @@ export async function callTool(shortName: string, args: Record<string, any>): Pr
   return parsed;
 }
 
-/* ---------- deep extraction helpers ---------- */
+/* ---------- extraction helpers ---------- */
 
 const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
-export function deepCollect(obj: any, visit: (key: string, value: any) => void, key = "") {
+function deepCollect(obj: any, visit: (key: string, value: any) => void, key = "") {
   if (obj === null || obj === undefined) return;
   if (Array.isArray(obj)) {
     for (const v of obj) deepCollect(v, visit, key);
@@ -167,7 +188,7 @@ export function deepCollect(obj: any, visit: (key: string, value: any) => void, 
   visit(key, obj);
 }
 
-export function extractJobIds(parsed: any[]): string[] {
+function extractJobIds(parsed: any[]): string[] {
   const strong: string[] = [];
   const weak: string[] = [];
   deepCollect(parsed, (k, v) => {
@@ -179,7 +200,7 @@ export function extractJobIds(parsed: any[]): string[] {
   return [...new Set(ids)];
 }
 
-export function extractStatus(parsed: any[]): string | null {
+function extractStatus(parsed: any[]): string | null {
   let found: string | null = null;
   const known = ["queued", "in_progress", "processing", "completed", "failed", "nsfw", "canceled", "success", "done"];
   deepCollect(parsed, (k, v) => {
@@ -190,7 +211,7 @@ export function extractStatus(parsed: any[]): string | null {
   return found;
 }
 
-export function extractUrls(parsed: any[]): string[] {
+function extractUrls(parsed: any[]): string[] {
   const urls: string[] = [];
   deepCollect(parsed, (k, v) => {
     if (typeof v === "string" && /^https?:\/\//.test(v) && /(url|src|href)/i.test(k)) urls.push(v);
@@ -198,7 +219,7 @@ export function extractUrls(parsed: any[]): string[] {
   return [...new Set(urls)].filter((u) => !/oauth|auth|login/i.test(u));
 }
 
-export function extractMediaId(parsed: any[]): string | null {
+function extractMediaId(parsed: any[]): string | null {
   let found: string | null = null;
   deepCollect(parsed, (k, v) => {
     if (!found && typeof v === "string" && UUID.test(v) && /media/i.test(k)) found = v;
@@ -211,9 +232,9 @@ export function extractMediaId(parsed: any[]): string | null {
   return found;
 }
 
-/* ---------- high-level operations ---------- */
+/* ---------- high-level operations (all per-user) ---------- */
 
-export async function generateImage(opts: {
+export async function generateImage(userId: string, opts: {
   model: string;
   prompt: string;
   aspect: string;
@@ -230,25 +251,25 @@ export async function generateImage(opts: {
   };
   if (opts.model === "gpt_image_2") args.quality = "high";
   if (opts.refMediaIds?.length) args.medias = opts.refMediaIds.map((v) => ({ role: "image", value: v }));
-  const parsed = await callTool("generate_image", args);
+  const parsed = await callTool(userId, "generate_image", args);
   const ids = extractJobIds(parsed);
   if (!ids.length) throw new Error("No job id in generate_image response: " + JSON.stringify(parsed).slice(0, 600));
   return ids;
 }
 
-export async function generateVideo(opts: {
+export async function generateVideo(userId: string, opts: {
   model: string;
   prompt: string;
   aspect: string;
   duration: number;
   mode: string;
   sound: string;
-  startRef: string; // media id or job id
+  startRef: string;
   endRef?: string;
 }): Promise<string[]> {
   const medias: any[] = [{ role: "start_image", value: opts.startRef }];
   if (opts.endRef) medias.push({ role: "end_image", value: opts.endRef });
-  const parsed = await callTool("generate_video", {
+  const parsed = await callTool(userId, "generate_video", {
     model: opts.model,
     prompt: opts.prompt,
     aspect_ratio: opts.aspect,
@@ -262,13 +283,13 @@ export async function generateVideo(opts: {
   return ids;
 }
 
-export async function jobStatus(jobId: string): Promise<{ status: string; urls: string[] }> {
-  const parsed = await callTool("job_status", { jobId });
+export async function jobStatus(userId: string, jobId: string): Promise<{ status: string; urls: string[] }> {
+  const parsed = await callTool(userId, "job_status", { jobId });
   return { status: extractStatus(parsed) ?? "in_progress", urls: extractUrls(parsed) };
 }
 
-export async function importUrl(url: string): Promise<string> {
-  const parsed = await callTool("media_import_url", { url });
+export async function importUrl(userId: string, url: string): Promise<string> {
+  const parsed = await callTool(userId, "media_import_url", { url });
   const id = extractMediaId(parsed);
   if (!id) throw new Error("No media id from media_import_url: " + JSON.stringify(parsed).slice(0, 400));
   return id;
