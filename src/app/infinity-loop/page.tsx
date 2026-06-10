@@ -51,17 +51,18 @@ function Inner() {
 
 function Canvas({ id }: { id: string }) {
   const { project, refresh, err } = useProject(id);
-  const [busy, setBusy] = useState(false);
+  const [working, setWorking] = useState<Record<string, boolean>>({});
 
   if (!project) return <div style={{ padding: 30 }} className={err ? "" : "pulse"}>{err || "Loading…"}</div>;
 
   async function genTransition(fromId: string, toId: string | null, loop: boolean) {
-    setBusy(true);
+    const key = `${fromId}->${toId ?? "end"}`;
+    setWorking((w) => ({ ...w, [key]: true })); // instant per-clip spinner
     try {
       await jpost(`/api/projects/${id}/clips`, { pairs: [{ from: fromId, to: toId, loop }] });
-      refresh();
+      await refresh();
     } finally {
-      setBusy(false);
+      setWorking((w) => ({ ...w, [key]: false }));
     }
   }
 
@@ -83,7 +84,7 @@ function Canvas({ id }: { id: string }) {
           label={`SCENE ${s.n} → ${next.n}`}
           clip={clip}
           ready={!!s.chosenVariantId && !!next.chosenVariantId}
-          busy={busy}
+          working={!!working[`${s.id}->${next.id}`]}
           onGen={() => genTransition(s.id, next.id, false)}
         />
       );
@@ -99,7 +100,7 @@ function Canvas({ id }: { id: string }) {
         label={`SCENE ${last.n} ↺ ${first.n}`}
         clip={clip}
         ready={!!last.chosenVariantId && !!first.chosenVariantId}
-        busy={busy}
+        working={!!working[`${last.id}->${first.id}`]}
         loop
         onGen={() => genTransition(last.id, first.id, true)}
       />
@@ -144,9 +145,10 @@ function SceneNode({ scene, onGen }: { scene: Scene; onGen: () => void }) {
   );
 }
 
-function Edge({ label, clip, ready, busy, onGen, loop }: {
-  label: string; clip?: Clip; ready: boolean; busy: boolean; onGen: () => void; loop?: boolean;
+function Edge({ label, clip, ready, working, onGen, loop }: {
+  label: string; clip?: Clip; ready: boolean; working: boolean; onGen: () => void; loop?: boolean;
 }) {
+  const loading = working || !!clip?.generating; // either just-clicked, or a job is in flight
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 190, alignSelf: "center" }}>
       <div style={{ width: "100%", height: 1, borderTop: `2px dashed ${loop ? "var(--accent)" : "var(--border)"}`, position: "relative", marginBottom: 8 }} />
@@ -155,17 +157,22 @@ function Edge({ label, clip, ready, busy, onGen, loop }: {
           {label} · VIDEO
         </div>
         <div style={{ aspectRatio: "9/16", background: "var(--bg-2)", display: "grid", placeItems: "center", overflow: "hidden" }}>
-          {clip?.src ? (
+          {loading ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <div className="spin" style={{ width: 26, height: 26, borderRadius: "50%", border: "3px solid var(--border)", borderTopColor: "var(--accent)" }} />
+              <span className="muted" style={{ fontSize: 11 }}>{working ? "restarting…" : "rendering…"}</span>
+            </div>
+          ) : clip?.src ? (
             <video src={clip.src} style={{ width: "100%", height: "100%", objectFit: "cover" }} controls muted loop />
           ) : clip?.error ? (
             <span style={{ fontSize: 11, color: "#ff6b6b", textAlign: "center", padding: "0 8px" }}>{clip.error}</span>
           ) : (
-            <span className="muted pulse" style={{ fontSize: 11 }}>{clip?.generating ? "rendering…" : "ready"}</span>
+            <span className="muted" style={{ fontSize: 11 }}>ready</span>
           )}
         </div>
         <div style={{ padding: 8 }}>
-          <button className="btn btn-accent btn-sm" style={{ width: "100%" }} onClick={onGen} disabled={!ready || busy}>
-            {clip?.generating ? "Restart" : clip?.error ? "Retry" : clip?.src ? "Regenerate morph" : ready ? "Generate morph" : "Approve both scenes"}
+          <button className="btn btn-accent btn-sm" style={{ width: "100%" }} onClick={onGen} disabled={!ready || working}>
+            {working ? "…" : clip?.generating ? "Restart" : clip?.error ? "Retry" : clip?.src ? "Regenerate morph" : ready ? "Generate morph" : "Approve both scenes"}
           </button>
         </div>
       </div>
