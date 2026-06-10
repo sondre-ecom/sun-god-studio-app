@@ -25,12 +25,48 @@ function addLibrary(opts: { kind: "image" | "video"; projectId: string; ownerId?
   d.library.push({ id: uid(), favorite: false, createdAt: Date.now(), ...opts });
 }
 
+// One sweep per project at a time. Prevents overlapping polls from double-processing
+// the same finished job and creating duplicate variants.
+const refreshing = new Set<string>();
+
+/** Collapse duplicate variants (same jobId+url) per scene; repoint a chosen variant if it was a dup. Returns true if it changed anything. */
+export function dedupeProject(project: Project): boolean {
+  let changed = false;
+  for (const scene of project.scenes) {
+    const seen = new Map<string, string>(); // jobId|url -> kept variant id
+    const kept: typeof scene.variants = [];
+    for (const v of scene.variants) {
+      const key = `${v.jobId}|${v.url ?? v.localPath ?? v.id}`;
+      const existing = seen.get(key);
+      if (existing) {
+        if (scene.chosenVariantId === v.id) scene.chosenVariantId = existing; // keep selection valid
+        changed = true;
+        continue;
+      }
+      seen.set(key, v.id);
+      kept.push(v);
+    }
+    if (kept.length !== scene.variants.length) scene.variants = kept;
+    if (scene.chosenVariantId && !scene.variants.some((v) => v.id === scene.chosenVariantId)) {
+      scene.chosenVariantId = scene.variants[0]?.id;
+      changed = true;
+    }
+  }
+  if (changed) {
+    project.updatedAt = Date.now();
+    save();
+  }
+  return changed;
+}
+
 /** Sweep all pending jobs of a project: poll, download finished media, update records. */
 export async function refreshProject(project: Project): Promise<void> {
-  let dirty = false;
   const renderUserId = project.ownerId; // poll with the project owner's own Higgsfield connection
   if (!renderUserId) return;
-
+  if (refreshing.has(project.id)) return; // a sweep is already running for this project
+  refreshing.add(project.id);
+  let dirty = false;
+  try {
   for (const scene of project.scenes) {
     if (!scene.pendingJobs.length) continue;
     const still: string[] = [];
@@ -40,6 +76,7 @@ export async function refreshProject(project: Project): Promise<void> {
         if (st.status === "completed") {
           let i = 0;
           for (const url of st.urls) {
+            if (scene.variants.some((v) => v.jobId === jobId && v.url === url)) continue; // already have it
             const localPath = await download(url, `${jobId}_${i}${extFor(url, "image")}`);
             scene.variants.push({ id: uid(), jobId, url, localPath });
             addLibrary({ kind: "image", projectId: project.id, ownerId: project.ownerId, label: `${project.title} · scene ${scene.n}`, jobId, url, localPath });
@@ -94,6 +131,9 @@ export async function refreshProject(project: Project): Promise<void> {
   if (dirty) {
     project.updatedAt = Date.now();
     save();
+  }
+  } finally {
+    refreshing.delete(project.id);
   }
 }
 

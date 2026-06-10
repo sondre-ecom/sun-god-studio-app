@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, getProject, save, touch } from "@/lib/store";
 import { serializeProject } from "@/lib/serialize";
-import { refreshProject, busy } from "@/lib/jobs";
+import { refreshProject, busy, dedupeProject } from "@/lib/jobs";
 import { userForProject } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const p = getProject(id);
   if (!p) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (!(await userForProject(p, req))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  dedupeProject(p); // self-heal any duplicate variants from earlier overlapping polls
   if (busy(p)) {
     try {
       await refreshProject(p);
