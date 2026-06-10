@@ -1,0 +1,28 @@
+# Render.com blueprint — deploys Sun God Studio as a Docker web service with a
+# persistent disk for projects + generated media. Push this repo to GitHub, then
+# in Render: New → Blueprint → pick the repo. Set the env vars marked sync:false.
+services:
+  - type: web
+    name: sun-god-studio
+    runtime: docker
+    plan: starter # ~$7/mo; gives an always-on instance + persistent disk
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: APP_URL
+        # set this to your Render URL after first deploy, e.g. https://sun-god-studio.onrender.com
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true # random signing secret for sessions
+      - key: ANTHROPIC_API_KEY
+        sync: false # paste your Anthropic API key
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASS
+        sync: false # your first admin password
