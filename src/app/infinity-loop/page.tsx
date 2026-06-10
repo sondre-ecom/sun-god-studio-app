@@ -52,8 +52,33 @@ function Inner() {
 function Canvas({ id }: { id: string }) {
   const { project, refresh, err } = useProject(id);
   const [working, setWorking] = useState<Record<string, boolean>>({});
+  const [assembling, setAssembling] = useState(false);
+  const [aerr, setAerr] = useState("");
 
   if (!project) return <div style={{ padding: 30 }} className={err ? "" : "pulse"}>{err || "Loading…"}</div>;
+
+  // Ready to stitch when every consecutive transition has a finished clip (+ the loop clip in loop mode).
+  const transitionsDone =
+    project.scenes.length > 1 &&
+    project.scenes.slice(0, -1).every((s, i) => {
+      const next = project.scenes[i + 1];
+      return project.clips.some((c) => c.fromSceneId === s.id && c.toSceneId === next.id && c.src);
+    });
+  const loopDone = !project.infinityLoop || project.clips.some((c) => c.isLoop && c.src);
+  const canAssemble = transitionsDone && loopDone;
+
+  async function doAssemble() {
+    setAssembling(true);
+    setAerr("");
+    try {
+      await jpost(`/api/projects/${id}/assemble`, {});
+      await refresh();
+    } catch (e) {
+      setAerr((e as Error).message);
+    } finally {
+      setAssembling(false);
+    }
+  }
 
   async function genTransition(fromId: string, toId: string | null, loop: boolean) {
     const key = `${fromId}->${toId ?? "end"}`;
@@ -112,6 +137,15 @@ function Canvas({ id }: { id: string }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
         <Link href={`/project/${id}`} className="btn btn-ghost btn-sm">← Pipeline view</Link>
         {project.infinityLoop && <span className="chip chip-accent">∞ loop enabled — last scene morphs back to scene 1</span>}
+        <span style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          {aerr && <span style={{ color: "#f87171", fontSize: 12 }}>{aerr}</span>}
+          {project.finalUrl && (
+            <a className="btn btn-sm" href={project.finalUrl} target="_blank" rel="noreferrer">▶ Final video</a>
+          )}
+          <button className="btn btn-accent btn-sm" onClick={doAssemble} disabled={!canAssemble || assembling}>
+            {assembling ? "Assembling…" : canAssemble ? "🎬 Assemble final ad" : "Generate all transitions first"}
+          </button>
+        </span>
       </div>
       <div style={{ display: "flex", alignItems: "stretch", gap: 0, minWidth: "max-content", paddingBottom: 20 }}>
         {nodes}
@@ -160,7 +194,13 @@ function Edge({ label, clip, ready, working, onGen, loop }: {
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <div className="spin" style={{ width: 26, height: 26, borderRadius: "50%", border: "3px solid var(--border)", borderTopColor: "var(--accent)" }} />
-              <span className="muted" style={{ fontSize: 11 }}>{working ? "restarting…" : "rendering…"}</span>
+              <span className="muted" style={{ fontSize: 11 }}>
+                {working ? "restarting…" : "rendering…"}
+                {!working && clip?.generating && clip?.startedAt ? ` ${Math.max(0, Math.floor((Date.now() - clip.startedAt) / 60000))}m` : ""}
+              </span>
+              {!working && clip?.generating && clip?.startedAt && Date.now() - clip.startedAt > 2 * 60000 ? (
+                <span className="muted" style={{ fontSize: 9, opacity: 0.7 }}>taking a while — you can Restart</span>
+              ) : null}
             </div>
           ) : clip?.src ? (
             <video src={clip.src} style={{ width: "100%", height: "100%", objectFit: "cover" }} controls muted loop />

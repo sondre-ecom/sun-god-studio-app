@@ -14,6 +14,14 @@ function serverUrl(): string {
   return db().settings.hf.serverUrl || "https://mcp.higgsfield.ai/mcp";
 }
 
+/** Reject after `ms` if the promise hasn't settled — prevents a hung network call from freezing a sweep. */
+function withTimeout<T>(p: Promise<T>, ms: number, msg: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(msg)), ms)),
+  ]);
+}
+
 function hfStore(userId: string): HfAuth {
   const u = userById(userId);
   if (!u) throw new Error("Unknown user");
@@ -153,7 +161,8 @@ export async function callTool(userId: string, shortName: string, args: Record<s
   const props = def.inputSchema?.properties ?? {};
   const finalArgs = props.params && !("params" in args) ? { params: args } : args;
   const c = await getClient(userId);
-  const res: any = await c.callTool({ name: def.name, arguments: finalArgs });
+  // Hard timeout so a hung Higgsfield call can never freeze the polling sweep.
+  const res: any = await withTimeout(c.callTool({ name: def.name, arguments: finalArgs }), 45000, `Higgsfield ${shortName} timed out`);
   const parsed: any[] = [];
   for (const block of res?.content ?? []) {
     if (block.type === "text") {

@@ -25,9 +25,10 @@ function addLibrary(opts: { kind: "image" | "video"; projectId: string; ownerId?
   d.library.push({ id: uid(), favorite: false, createdAt: Date.now(), ...opts });
 }
 
-// One sweep per project at a time. Prevents overlapping polls from double-processing
-// the same finished job and creating duplicate variants.
-const refreshing = new Set<string>();
+// One sweep per project at a time (prevents overlapping polls from double-processing jobs).
+// Timestamped so a wedged sweep can't lock a project forever — a lock older than 90s is treated as stale.
+const refreshing = new Map<string, number>();
+const LOCK_STALE_MS = 90 * 1000;
 
 /** Collapse duplicate variants (same jobId+url) per scene; repoint a chosen variant if it was a dup. Returns true if it changed anything. */
 export function dedupeProject(project: Project): boolean {
@@ -63,8 +64,9 @@ export function dedupeProject(project: Project): boolean {
 export async function refreshProject(project: Project): Promise<void> {
   const renderUserId = project.ownerId; // poll with the project owner's own Higgsfield connection
   if (!renderUserId) return;
-  if (refreshing.has(project.id)) return; // a sweep is already running for this project
-  refreshing.add(project.id);
+  const lockedAt = refreshing.get(project.id);
+  if (lockedAt && Date.now() - lockedAt < LOCK_STALE_MS) return; // a fresh sweep is already running
+  refreshing.set(project.id, Date.now());
   let dirty = false;
   try {
   for (const scene of project.scenes) {
@@ -97,7 +99,7 @@ export async function refreshProject(project: Project): Promise<void> {
     scene.pendingJobs = still;
   }
 
-  const CLIP_TIMEOUT_MS = 8 * 60 * 1000; // give up on a Kling job stuck past 8 minutes
+  const CLIP_TIMEOUT_MS = 6 * 60 * 1000; // give up on a Kling job stuck past 6 minutes
   for (const clip of project.clips) {
     if (!clip.pendingJob) continue;
     try {
