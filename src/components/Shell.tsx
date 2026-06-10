@@ -23,7 +23,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connecting, setConnecting] = useState(false);
 
-  const isLogin = path === "/login";
+  const isLogin = path === "/login" || path === "/signup";
 
   useEffect(() => {
     if (isLogin) return;

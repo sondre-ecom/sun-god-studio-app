@@ -1,33 +1,30 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { jpost } from "@/lib/api";
+import { jget, jpost } from "@/lib/api";
 
-export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <Form />
-    </Suspense>
-  );
-}
-
-function Form() {
+export default function SignupPage() {
   const router = useRouter();
-  const sp = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [codeRequired, setCodeRequired] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    jget<{ codeRequired: boolean }>("/api/auth/signup").then((r) => setCodeRequired(r.codeRequired)).catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr("");
     try {
-      await jpost("/api/auth/login", { username, password });
-      router.push(sp.get("next") || "/");
+      await jpost("/api/auth/signup", { username, password, code });
+      router.push("/");
       router.refresh();
     } catch (e) {
       setErr((e as Error).message);
@@ -41,17 +38,28 @@ function Form() {
         <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
           Sun God <span style={{ color: "var(--accent)" }}>☀</span> Studio
         </div>
-        <div className="muted" style={{ fontSize: 13, marginBottom: 20 }}>Sign in to make animated ads.</div>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 20 }}>Create your account.</div>
+
         <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>Username</label>
         <input className="input" style={{ margin: "5px 0 12px" }} value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
-        <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>Password</label>
-        <input className="input" type="password" style={{ margin: "5px 0 16px" }} value={password} onChange={(e) => setPassword(e.target.value)} />
+
+        <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>Password (min 6)</label>
+        <input className="input" type="password" style={{ margin: "5px 0 12px" }} value={password} onChange={(e) => setPassword(e.target.value)} />
+
+        {codeRequired && (
+          <>
+            <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>Invite code</label>
+            <input className="input" style={{ margin: "5px 0 12px" }} value={code} onChange={(e) => setCode(e.target.value)} />
+          </>
+        )}
+
         {err && <div style={{ color: "#ff6b6b", fontSize: 13, marginBottom: 12 }}>{err}</div>}
         <button className="btn btn-accent" style={{ width: "100%", justifyContent: "center" }} disabled={busy}>
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? "Creating…" : "Create account"}
         </button>
+
         <div className="muted" style={{ fontSize: 13, marginTop: 16, textAlign: "center" }}>
-          Don&apos;t have an account? <Link href="/signup" style={{ color: "var(--accent-2)" }}>Create one</Link>
+          Already have an account? <Link href="/login" style={{ color: "var(--accent-2)" }}>Sign in</Link>
         </div>
       </form>
     </div>

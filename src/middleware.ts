@@ -4,8 +4,9 @@ import { SESSION_COOKIE, verifyToken } from "@/lib/session";
 // Paths reachable without an app login.
 const PUBLIC = [
   "/login",
+  "/signup",
   "/api/auth/login",
-  "/api/auth/bootstrap",
+  "/api/auth/signup",
   "/api/higgsfield/callback", // OAuth return from Higgsfield
 ];
 
