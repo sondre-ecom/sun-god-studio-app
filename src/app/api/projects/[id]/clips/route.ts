@@ -96,6 +96,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         isLoop,
         prompt,
         pendingJob: ids[0],
+        startedAt: Date.now(),
         status: "queued",
       });
     } catch (e) {

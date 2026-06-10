@@ -157,13 +157,15 @@ function Edge({ label, clip, ready, busy, onGen, loop }: {
         <div style={{ aspectRatio: "9/16", background: "var(--bg-2)", display: "grid", placeItems: "center", overflow: "hidden" }}>
           {clip?.src ? (
             <video src={clip.src} style={{ width: "100%", height: "100%", objectFit: "cover" }} controls muted loop />
+          ) : clip?.error ? (
+            <span style={{ fontSize: 11, color: "#ff6b6b", textAlign: "center", padding: "0 8px" }}>{clip.error}</span>
           ) : (
             <span className="muted pulse" style={{ fontSize: 11 }}>{clip?.generating ? "rendering…" : "ready"}</span>
           )}
         </div>
         <div style={{ padding: 8 }}>
-          <button className="btn btn-accent btn-sm" style={{ width: "100%" }} onClick={onGen} disabled={!ready || busy || clip?.generating}>
-            {clip?.generating ? "…" : clip?.src ? "Regenerate morph" : ready ? "Generate morph" : "Approve both scenes"}
+          <button className="btn btn-accent btn-sm" style={{ width: "100%" }} onClick={onGen} disabled={!ready || busy}>
+            {clip?.generating ? "Restart" : clip?.error ? "Retry" : clip?.src ? "Regenerate morph" : ready ? "Generate morph" : "Approve both scenes"}
           </button>
         </div>
       </div>

@@ -97,28 +97,44 @@ export async function refreshProject(project: Project): Promise<void> {
     scene.pendingJobs = still;
   }
 
+  const CLIP_TIMEOUT_MS = 8 * 60 * 1000; // give up on a Kling job stuck past 8 minutes
   for (const clip of project.clips) {
     if (!clip.pendingJob) continue;
     try {
       const st = await jobStatus(renderUserId, clip.pendingJob);
-      if (st.status === "completed") {
-        const vid = st.urls.find((u) => /\.(mp4|webm|mov)(\?|$)/i.test(u)) ?? st.urls[0];
-        if (vid) {
-          clip.url = vid;
-          clip.localPath = await download(vid, `${clip.pendingJob}_clip${extFor(vid, "video")}`);
-          addLibrary({ kind: "video", projectId: project.id, ownerId: project.ownerId, label: `${project.title} · transition`, jobId: clip.pendingJob, url: vid, localPath: clip.localPath });
-        }
+      const vid = st.urls.find((u) => /\.(mp4|webm|mov)(\?|$)/i.test(u)) ?? (st.status === "completed" ? st.urls[0] : undefined);
+      if (vid) {
+        // Finish as soon as a video URL exists — even if the status field was unparseable.
+        clip.url = vid;
+        clip.localPath = await download(vid, `${clip.pendingJob}_clip${extFor(vid, "video")}`);
+        addLibrary({ kind: "video", projectId: project.id, ownerId: project.ownerId, label: `${project.title} · transition`, jobId: clip.pendingJob, url: vid, localPath: clip.localPath });
         clip.status = "completed";
+        clip.error = undefined;
         clip.pendingJob = undefined;
         dirty = true;
       } else if (st.status === "failed" || st.status === "nsfw" || st.status === "canceled") {
         clip.status = st.status as typeof clip.status;
+        clip.error = st.status === "nsfw" ? "Blocked by the content filter — try rewording the motion, or regenerate." : "Render failed — click to retry.";
+        clip.pendingJob = undefined;
+        dirty = true;
+      } else if (clip.startedAt && Date.now() - clip.startedAt > CLIP_TIMEOUT_MS) {
+        // Stuck job: stop polling forever so the user can retry.
+        clip.status = "failed";
+        clip.error = "This clip got stuck (timed out). Click to retry.";
         clip.pendingJob = undefined;
         dirty = true;
       } else {
         clip.status = "in_progress";
       }
-    } catch {}
+    } catch {
+      // transient poll error — but still honor the timeout so a permanently-erroring job doesn't hang forever
+      if (clip.startedAt && Date.now() - clip.startedAt > CLIP_TIMEOUT_MS) {
+        clip.status = "failed";
+        clip.error = "This clip got stuck (timed out). Click to retry.";
+        clip.pendingJob = undefined;
+        dirty = true;
+      }
+    }
   }
 
   const allChosen = project.scenes.length > 0 && project.scenes.every((s) => s.chosenVariantId);

@@ -11,7 +11,7 @@ export interface Scene {
 }
 export interface Clip {
   id: string; fromSceneId: string; toSceneId: string | null; isLoop?: boolean;
-  src?: string; status?: string; generating: boolean; prompt?: string;
+  src?: string; status?: string; generating: boolean; prompt?: string; error?: string;
 }
 export interface Project {
   id: string; title: string; status: string; infinityLoop: boolean;

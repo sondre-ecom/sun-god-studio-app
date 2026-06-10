@@ -75,7 +75,9 @@ export interface Clip {
   isLoop?: boolean;
   prompt?: string;
   pendingJob?: string;
+  startedAt?: number; // when the pending job was kicked off (for stuck-job timeout)
   status?: JobState;
+  error?: string;
   url?: string;
   localPath?: string;
 }
