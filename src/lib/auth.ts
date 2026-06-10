@@ -19,13 +19,17 @@ function verifyPassword(password: string, stored: string): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/** Seed an admin from env on first boot if no users exist. */
+/**
+ * Seed an admin from env on first boot — ONLY when ADMIN_PASS is provided
+ * (hosted deployments). On a self-hosted copy with no ADMIN_PASS, we seed nothing:
+ * the first person to sign up becomes the owner of their own copy (see signup route).
+ */
 export function ensureSeed(): void {
   const d = db();
   if (d.users.length) return;
+  if (!process.env.ADMIN_PASS) return;
   const u = process.env.ADMIN_USER || "admin";
-  const p = process.env.ADMIN_PASS || "changeme";
-  d.users.push({ id: uid(), username: u.toLowerCase(), passHash: hash(p), role: "admin", createdAt: Date.now() });
+  d.users.push({ id: uid(), username: u.toLowerCase(), passHash: hash(process.env.ADMIN_PASS), role: "admin", createdAt: Date.now() });
   save();
 }
 

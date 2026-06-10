@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createUser, publicUser, ensureSeed } from "@/lib/auth";
 import { SESSION_COOKIE, createToken } from "@/lib/session";
+import { db } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Wrong or missing invite code." }, { status: 403 });
   }
 
-  ensureSeed(); // make sure the admin exists before anyone else registers
+  ensureSeed(); // hosted deployments: make sure the seeded admin exists first
+  // On a fresh self-hosted copy (no users yet) the very first account becomes the owner/admin.
+  const firstAccount = db().users.length === 0;
   try {
-    const user = createUser(String(username || ""), String(password || ""), "member");
+    const user = createUser(String(username || ""), String(password || ""), firstAccount ? "admin" : "member");
     const token = await createToken(user.id);
     const res = NextResponse.json({ user: publicUser(user) });
     res.cookies.set(SESSION_COOKIE, token, {
