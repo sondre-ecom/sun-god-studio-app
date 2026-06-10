@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { db, User } from "./store";
+import { COPY_PRINCIPLES } from "./copywriting";
 
 const MODEL = process.env.BRAIN_MODEL || "claude-fable-5";
 
@@ -113,7 +114,9 @@ export async function makeStoryboard(input: {
   infinityLoop: boolean;
 }, auth: BrainAuth): Promise<StoryboardOut> {
   const count = input.sceneCount === "auto" ? "5 to 7" : String(input.sceneCount);
-  const prompt = `You are an elite animated-ad director for paid social (Meta/TikTok, 9:16 vertical).
+  const prompt = `You are an elite direct-response animated-ad director for paid social (Meta/TikTok, 9:16 vertical).
+
+${COPY_PRINCIPLES}
 
 ${brandContext(input.brandId)}
 
@@ -127,8 +130,9 @@ ${input.vision}
 Create a storyboard of exactly ${count} scenes. Rules:
 - Scene 1 is the HOOK: must stop the scroll in frame one, label who it's for, paint a picture.
 - Escalate emotionally scene by scene; last scene is the product/CTA frame.
-- Each scene gets ONE keyframe still. Between consecutive scenes a video model will animate from scene N's exact frame to scene N+1's exact frame — so every "transitionToNext" must describe a PHYSICALLY ANIMATABLE journey (camera push, morph, object carrying across, liquid draining, zoom through a doorway). Direct the in-between like a director.
-${input.infinityLoop ? "- INFINITY LOOP MODE: the LAST scene must be composed so it can morph back into scene 1 seamlessly (similar framing/era/palette) — write the last scene's transitionToNext as the journey back into scene 1's exact frame." : ""}
+- FOLLOW THE BRIEF'S APPROACH. If the brief asks for science/mechanism, a literal depiction, or recognizable real-life proof, do exactly that — show the real subject and the real phenomenon. Do NOT invent a metaphor, mascot, town, weather, or fantasy world unless the brief explicitly asks for one. Honor the product's real usage ritual (e.g. a daily powder stirred into water) so the format reads correctly.
+- Each scene gets ONE keyframe still. Between consecutive scenes a video model animates from scene N's exact frame to scene N+1's exact frame — so every "transitionToNext" must describe a PHYSICALLY ANIMATABLE in-between. That can be a literal continuity move (match-cut, a time-of-day change, the same subject visibly changing state, a camera push) OR — only if the brief wants it — a morph. Direct the in-between like a director.
+${input.infinityLoop ? "- INFINITY LOOP MODE: the LAST scene must be composed so it can flow back into scene 1 seamlessly (similar framing/palette) — write the last scene's transitionToNext as the journey back into scene 1's exact frame." : ""}
 - "visual" = a complete, self-contained image prompt for that keyframe (subject, framing, lighting, emotion). Do NOT include the style block — it gets prepended automatically. Characters must be described consistently using the character sheets.
 - "copy" = the VO / on-screen line for that scene (short, punchy).
 - "motion" = what moves during this scene's clip.
@@ -146,18 +150,22 @@ Respond with ONLY this JSON, no commentary:
  * concrete *animatable* imagery, a style, and an ending on the product.
  */
 export async function craftVisionPrompt(idea: string, auth: BrainAuth): Promise<string> {
-  const prompt = `You are a world-class creative director who writes the single best possible "vision" brief for an AI animated-ad generator. The user gives a rough idea; you return ONE tight, vivid paragraph (90–160 words) they can paste straight into the generator.
+  const prompt = `You are a world-class direct-response creative director who writes the single best possible "vision" brief for an AI animated-ad generator. The user gives a rough idea; you return ONE tight, vivid paragraph (90–160 words) they can paste straight into the generator.
+
+${COPY_PRINCIPLES}
+
 
 A great vision brief for this tool always has:
-- A concrete VISUAL METAPHOR or through-line the whole ad can be built around (this is what makes it cinematic, not a list of features).
+- A clear THROUGH-LINE the whole ad is built around. Prefer the mechanism + recognizable real-life proof when the idea is science/claim-driven; use a visual metaphor ONLY if it genuinely clarifies an invisible idea and suits the product. Never bolt on a metaphor (a town, a mascot, weather) when the user wants the real thing shown.
 - WHO it's for and the core EMOTION/desire (name the viewer and what they feel).
-- A scroll-stopping HOOK image for the very first moment.
-- A simple EMOTIONAL ARC (e.g. frustrated → hopeful → confident).
-- Concrete, ANIMATABLE imagery (things that can physically move/morph on screen), not abstract claims.
+- A scroll-stopping HOOK for the very first moment.
+- A simple EMOTIONAL ARC (e.g. frustrated → relieved → confident).
+- Concrete, ANIMATABLE imagery shown on the real subject (states changing, a feature sharpening, a layer receding) — not abstract claims.
+- The product's real USAGE RITUAL if relevant (e.g. a daily powder stirred into water), so the format reads right.
 - A clear ENDING on the product / call-to-action.
 - A note of the desired ANIMATION STYLE (default Pixar 3D if unspecified) and rough length (~30s).
 
-Write it as flowing directic prose (not bullet points, not a storyboard — that comes later). Keep the user's product, audience, and intent; enrich the rest. If the idea is vague, make confident, sensible creative choices rather than asking questions.
+Write it as flowing directive prose (not bullet points, not a storyboard — that comes later). Keep the user's product, audience, intent, AND chosen approach (if they asked for science/literal/proof, honor it — do not substitute an analogy). If the idea is vague, make confident, sensible creative choices rather than asking questions.
 
 THE USER'S ROUGH IDEA:
 ${idea}
