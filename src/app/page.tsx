@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [infinityLoop, setInfinityLoop] = useState(false);
   const [pickedChars, setPickedChars] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  const [polishing, setPolishing] = useState(false);
   const [err, setErr] = useState("");
 
   async function load() {
@@ -68,6 +69,20 @@ export default function Dashboard() {
     }
   }
 
+  async function polish() {
+    if (!vision.trim()) return;
+    setPolishing(true);
+    setErr("");
+    try {
+      const r = await jpost<{ prompt: string }>("/api/prompt-helper", { idea: vision });
+      setVision(r.prompt);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setPolishing(false);
+    }
+  }
+
   function thumb(p: ProjectCard): string | undefined {
     const s = p.scenes.find((sc) => sc.chosenVariantId) || p.scenes[0];
     return s?.variants.find((v) => v.src)?.src;
@@ -85,11 +100,19 @@ export default function Dashboard() {
         <textarea
           className="input"
           rows={3}
-          placeholder="e.g. A tired new mom can't sleep — show her body as a flooded house at high tide, and Elvora as the tide finally going out. Pixar style, ends on the bottle."
+          placeholder="Even a few words works — e.g. 'supplement that helps you sleep, for stressed moms'. Then hit ✨ Help me write this."
           value={vision}
           onChange={(e) => setVision(e.target.value)}
-          style={{ resize: "vertical", marginBottom: 12 }}
+          style={{ resize: "vertical", marginBottom: 8 }}
         />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <button className="btn btn-sm" onClick={polish} disabled={polishing || !vision.trim()}>
+            {polishing ? "Polishing…" : "✨ Help me write this"}
+          </button>
+          <span className="muted" style={{ fontSize: 12 }}>
+            Turns a rough idea into a polished, storyboard-ready prompt you can edit.
+          </span>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10 }}>
           <Field label="Brand">
             <select className="select" value={brandId} onChange={(e) => setBrandId(e.target.value)}>

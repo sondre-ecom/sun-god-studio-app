@@ -139,6 +139,34 @@ Respond with ONLY this JSON, no commentary:
   return parseJson<StoryboardOut>(await ask(prompt, auth));
 }
 
+/**
+ * Prompt Helper: turn a rough idea (even a few words) into ONE polished, storyboard-ready
+ * vision prompt that this app's brain renders well. Encodes what makes a great animated-ad
+ * brief: a visual metaphor, a clear who + feeling, a scroll-stopping hook, an emotional arc,
+ * concrete *animatable* imagery, a style, and an ending on the product.
+ */
+export async function craftVisionPrompt(idea: string, auth: BrainAuth): Promise<string> {
+  const prompt = `You are a world-class creative director who writes the single best possible "vision" brief for an AI animated-ad generator. The user gives a rough idea; you return ONE tight, vivid paragraph (90–160 words) they can paste straight into the generator.
+
+A great vision brief for this tool always has:
+- A concrete VISUAL METAPHOR or through-line the whole ad can be built around (this is what makes it cinematic, not a list of features).
+- WHO it's for and the core EMOTION/desire (name the viewer and what they feel).
+- A scroll-stopping HOOK image for the very first moment.
+- A simple EMOTIONAL ARC (e.g. frustrated → hopeful → confident).
+- Concrete, ANIMATABLE imagery (things that can physically move/morph on screen), not abstract claims.
+- A clear ENDING on the product / call-to-action.
+- A note of the desired ANIMATION STYLE (default Pixar 3D if unspecified) and rough length (~30s).
+
+Write it as flowing directic prose (not bullet points, not a storyboard — that comes later). Keep the user's product, audience, and intent; enrich the rest. If the idea is vague, make confident, sensible creative choices rather than asking questions.
+
+THE USER'S ROUGH IDEA:
+${idea}
+
+Respond with ONLY JSON: {"prompt": "the polished vision paragraph"}`;
+  const out = parseJson<{ prompt: string }>(await ask(prompt, auth));
+  return out.prompt;
+}
+
 export async function reviseVisual(input: {
   styleBlock: string;
   characterSheet: string;
