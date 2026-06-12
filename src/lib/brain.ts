@@ -3,6 +3,7 @@ import path from "node:path";
 import { db, User } from "./store";
 import { COPY_PRINCIPLES } from "./copywriting";
 import { META_AD_CRAFT, IMAGE_DIRECTION } from "./adcraft";
+import { EVOLVE_PLAYBOOK, EVAL_RUBRIC } from "./playbook";
 
 const MODEL = process.env.BRAIN_MODEL || "claude-fable-5";
 
@@ -117,6 +118,8 @@ export async function makeStoryboard(input: {
   const count = input.sceneCount === "auto" ? "5 to 7" : String(input.sceneCount);
   const prompt = `You are one of the best paid-social creative directors in the world — elite at Meta/TikTok direct-response (9:16 vertical). You make ads that stop the scroll and sell. You do NOT produce safe, generic, "mid" concepts.
 
+${EVOLVE_PLAYBOOK}
+
 ${META_AD_CRAFT}
 
 ${COPY_PRINCIPLES}
@@ -163,6 +166,8 @@ export async function reviseStoryboard(input: {
 }, auth: BrainAuth): Promise<StoryboardOut> {
   const prompt = `You are one of the best paid-social creative directors in the world, revising an animated-ad storyboard from a director's note. Keep everything that works; change exactly what the note asks; keep the concept sharp (strong who/angle/hook).
 
+${EVOLVE_PLAYBOOK}
+
 ${META_AD_CRAFT}
 
 ${COPY_PRINCIPLES}
@@ -186,6 +191,43 @@ Return the FULL revised storyboard as ONLY this JSON (same schema), with cinemat
   return parseJson<StoryboardOut>(await ask(prompt, auth));
 }
 
+/** Claude ruthlessly self-critiques the storyboard against the playbook + rubric and rewrites it sharper — no human note needed. */
+export async function improveStoryboard(input: {
+  styleName: string;
+  styleBlock: string;
+  brandId?: string;
+  infinityLoop: boolean;
+  clipDuration: number;
+  current: { title: string; script: string; scenes: { copy: string; visual: string; motion: string; transitionToNext: string; duration: number }[] };
+}, auth: BrainAuth): Promise<StoryboardOut> {
+  const prompt = `You are one of the best direct-response marketers in the world doing a RUTHLESS self-review and upgrade of this animated-ad storyboard. Treat it like a junior wrote it and you're making it a winner. Be honest — most first drafts are "fine," and "fine" loses on Meta.
+
+${EVOLVE_PLAYBOOK}
+
+${META_AD_CRAFT}
+
+${COPY_PRINCIPLES}
+
+${IMAGE_DIRECTION}
+
+${EVAL_RUBRIC}
+
+${brandContext(input.brandId)}
+
+ANIMATION STYLE: ${input.styleName}
+STYLE BLOCK (respected; not repeated inside scene visuals): ${input.styleBlock}
+${input.infinityLoop ? "INFINITY LOOP MODE: the last scene must flow back into scene 1." : ""}
+
+CURRENT STORYBOARD (JSON):
+${JSON.stringify(input.current)}
+
+Silently score it against the rubric, find the 2–3 biggest weaknesses (usually a soft hook, diluted idea, missing mechanism, asserted-not-recognized proof, or a surface-level desire), then output the IMPROVED full storyboard that fixes them — sharper hook that enters the conversation in their head, one big idea, a clear believable mechanism, recognized lived proof, the deeper real desire, cinematic fully-directed visuals. Keep what already works. Do not water it down to be "safe."
+
+Return ONLY this JSON (same schema):
+{"title": "...", "script": "full VO script", "styleBlock": "refined style block", "characterSheet": "consolidated character sheet paragraph (empty if none)", "scenes": [{"copy": "...", "visual": "...", "motion": "...", "transitionToNext": "...", "duration": ${input.clipDuration}}]}`;
+  return parseJson<StoryboardOut>(await ask(prompt, auth));
+}
+
 /**
  * Prompt Helper: turn a rough idea (even a few words) into ONE polished, storyboard-ready
  * vision prompt that this app's brain renders well. Encodes what makes a great animated-ad
@@ -194,6 +236,8 @@ Return the FULL revised storyboard as ONLY this JSON (same schema), with cinemat
  */
 export async function craftVisionPrompt(idea: string, auth: BrainAuth): Promise<string> {
   const prompt = `You are one of the best paid-social creative directors in the world. You write the single best possible "vision" brief for an AI animated-ad generator. The user gives a rough idea; you return ONE tight, vivid paragraph (90–160 words) they can paste straight into the generator. It must be a SHARP concept — a specific person, one strong angle, a scroll-stopping hook — never a safe/generic idea.
+
+${EVOLVE_PLAYBOOK}
 
 ${META_AD_CRAFT}
 

@@ -100,14 +100,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     refresh();
   }
 
-  async function reviseStoryboard() {
-    if (!sbNote.trim()) return;
+  async function reviseStoryboard(body: { feedback?: string; auto?: boolean }) {
     const hasStills = project!.scenes.some((s) => s.variants.length || s.generating);
     if (hasStills && !confirm("Rewriting the storyboard will clear the stills you've already generated. Continue?")) return;
     setRevising(true);
     setErr("");
     try {
-      await jpost(`/api/projects/${id}/storyboard`, { feedback: sbNote });
+      await jpost(`/api/projects/${id}/storyboard`, body);
       setSbNote("");
       refresh();
     } catch (e) {
@@ -158,18 +157,22 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         </span>
       </div>
 
-      {/* storyboard-level feedback — the cheapest place to iterate (before any image is generated) */}
-      <div className="card" style={{ padding: "10px 12px", marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
-        <span style={{ fontSize: 16 }}>✏️</span>
+      {/* storyboard-level iteration — the cheapest place to improve (before any image is generated) */}
+      <div className="card" style={{ padding: "10px 12px", marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <button className="btn btn-accent" onClick={() => reviseStoryboard({ auto: true })} disabled={revising} title="Claude critiques the storyboard against elite marketing principles and rewrites it sharper — no note needed">
+          {revising ? "Working…" : "✨ Improve with AI"}
+        </button>
+        <span className="muted" style={{ fontSize: 12 }}>or tell it exactly what to change →</span>
         <input
           className="input"
-          placeholder="Change the whole plan with a note — e.g. 'open mid-workout instead of the mirror', 'make scene 4 the mechanism', 'punchier hook'"
+          style={{ flex: 1, minWidth: 240 }}
+          placeholder="e.g. 'open mid-workout instead of the mirror', 'make scene 4 the mechanism', 'punchier hook'"
           value={sbNote}
           onChange={(e) => setSbNote(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && sbNote.trim()) reviseStoryboard(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && sbNote.trim()) reviseStoryboard({ feedback: sbNote }); }}
         />
-        <button className="btn btn-accent" onClick={reviseStoryboard} disabled={revising || !sbNote.trim()}>
-          {revising ? "Rewriting…" : "Revise storyboard"}
+        <button className="btn" onClick={() => reviseStoryboard({ feedback: sbNote })} disabled={revising || !sbNote.trim()}>
+          Revise with note
         </button>
       </div>
 
