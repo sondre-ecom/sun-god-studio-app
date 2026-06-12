@@ -49,6 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       refMediaIds: refs.length ? refs : undefined,
     });
     scene.pendingJobs.push(...ids);
+    scene.pendingStartedAt = Date.now();
     if (p.status === "storyboard") p.status = "stills";
     touch(p);
     return NextResponse.json({ project: serializeProject(p) });

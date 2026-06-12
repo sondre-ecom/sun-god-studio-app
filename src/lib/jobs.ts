@@ -95,8 +95,14 @@ export async function refreshProject(project: Project): Promise<void> {
         still.push(jobId); // transient — try again next poll
       }
     }
+    // Stuck stills: stop polling after 4 minutes so the Generate button frees up.
+    const STILL_TIMEOUT_MS = 4 * 60 * 1000;
+    if (still.length && scene.pendingStartedAt && Date.now() - scene.pendingStartedAt > STILL_TIMEOUT_MS) {
+      still.length = 0;
+    }
     if (still.length !== scene.pendingJobs.length) dirty = true;
     scene.pendingJobs = still;
+    if (!still.length) scene.pendingStartedAt = undefined;
   }
 
   const CLIP_TIMEOUT_MS = 6 * 60 * 1000; // give up on a Kling job stuck past 6 minutes

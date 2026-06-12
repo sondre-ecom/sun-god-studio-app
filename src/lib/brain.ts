@@ -151,6 +151,41 @@ Respond with ONLY this JSON, no commentary:
   return parseJson<StoryboardOut>(await ask(prompt, auth));
 }
 
+/** Rewrite an existing storyboard from a director's note — before any images are generated (cheapest place to iterate). */
+export async function reviseStoryboard(input: {
+  feedback: string;
+  styleName: string;
+  styleBlock: string;
+  brandId?: string;
+  infinityLoop: boolean;
+  clipDuration: number;
+  current: { title: string; script: string; scenes: { copy: string; visual: string; motion: string; transitionToNext: string; duration: number }[] };
+}, auth: BrainAuth): Promise<StoryboardOut> {
+  const prompt = `You are one of the best paid-social creative directors in the world, revising an animated-ad storyboard from a director's note. Keep everything that works; change exactly what the note asks; keep the concept sharp (strong who/angle/hook).
+
+${META_AD_CRAFT}
+
+${COPY_PRINCIPLES}
+
+${IMAGE_DIRECTION}
+
+${brandContext(input.brandId)}
+
+ANIMATION STYLE: ${input.styleName}
+STYLE BLOCK (respected; do not repeat inside scene visuals): ${input.styleBlock}
+${input.infinityLoop ? "INFINITY LOOP MODE: the last scene must flow back into scene 1." : ""}
+
+CURRENT STORYBOARD (JSON):
+${JSON.stringify(input.current)}
+
+THE DIRECTOR'S NOTE (what to change):
+${input.feedback}
+
+Return the FULL revised storyboard as ONLY this JSON (same schema), with cinematic, fully-directed "visual" prompts:
+{"title": "...", "script": "full VO script", "styleBlock": "refined style block", "characterSheet": "consolidated character sheet paragraph (empty if no recurring characters)", "scenes": [{"copy": "...", "visual": "...", "motion": "...", "transitionToNext": "...", "duration": ${input.clipDuration}}]}`;
+  return parseJson<StoryboardOut>(await ask(prompt, auth));
+}
+
 /**
  * Prompt Helper: turn a rough idea (even a few words) into ONE polished, storyboard-ready
  * vision prompt that this app's brain renders well. Encodes what makes a great animated-ad

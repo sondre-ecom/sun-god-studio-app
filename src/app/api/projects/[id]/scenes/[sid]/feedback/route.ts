@@ -53,6 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       refMediaIds: refs.length ? refs : undefined,
     });
     scene.pendingJobs.push(...ids);
+    scene.pendingStartedAt = Date.now();
     touch(p);
     return NextResponse.json({ project: serializeProject(p) });
   } catch (e) {

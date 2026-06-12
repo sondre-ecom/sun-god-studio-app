@@ -64,6 +64,7 @@ export interface Scene {
   transitionToNext: string; // how it morphs into the next scene
   duration: number; // seconds for the clip starting at this scene
   pendingJobs: string[];
+  pendingStartedAt?: number; // when the current still jobs were kicked off (stuck-job timeout)
   variants: Variant[];
   chosenVariantId?: string;
 }

@@ -11,6 +11,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [count, setCount] = useState(2);
   const [busyAll, setBusyAll] = useState(false);
   const [notice, setNotice] = useState("");
+  const [sbNote, setSbNote] = useState("");
+  const [revising, setRevising] = useState(false);
 
   if (!project) {
     return <div style={{ padding: 30 }} className={err ? "" : "pulse"}>{err ? <span style={{ color: "#ff6b6b" }}>{err}</span> : "Loading…"}</div>;
@@ -93,6 +95,30 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     refresh();
   }
 
+  async function editScene(sceneId: string, patch: Record<string, unknown>) {
+    await jpatch(`/api/projects/${id}`, { scenes: [{ id: sceneId, ...patch }] });
+    refresh();
+  }
+
+  async function reviseStoryboard() {
+    if (!sbNote.trim()) return;
+    const hasStills = project!.scenes.some((s) => s.variants.length || s.generating);
+    if (hasStills && !confirm("Rewriting the storyboard will clear the stills you've already generated. Continue?")) return;
+    setRevising(true);
+    setErr("");
+    try {
+      await jpost(`/api/projects/${id}/storyboard`, { feedback: sbNote });
+      setSbNote("");
+      refresh();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setRevising(false);
+    }
+  }
+
+  const approvedCount = project.scenes.filter((s) => s.chosenVariantId).length;
+
   return (
     <div style={{ padding: "22px 28px", maxWidth: 1180 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
@@ -127,11 +153,29 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: 0.5 }} className="muted">
           Storyboard · {project.scenes.length} scenes
         </h2>
+        <span className={approvedCount === project.scenes.length && approvedCount > 0 ? "chip chip-ok" : "chip"}>
+          {approvedCount}/{project.scenes.length} approved
+        </span>
+      </div>
+
+      {/* storyboard-level feedback — the cheapest place to iterate (before any image is generated) */}
+      <div className="card" style={{ padding: "10px 12px", marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={{ fontSize: 16 }}>✏️</span>
+        <input
+          className="input"
+          placeholder="Change the whole plan with a note — e.g. 'open mid-workout instead of the mirror', 'make scene 4 the mechanism', 'punchier hook'"
+          value={sbNote}
+          onChange={(e) => setSbNote(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && sbNote.trim()) reviseStoryboard(); }}
+        />
+        <button className="btn btn-accent" onClick={reviseStoryboard} disabled={revising || !sbNote.trim()}>
+          {revising ? "Rewriting…" : "Revise storyboard"}
+        </button>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {project.scenes.map((s) => (
-          <SceneRow key={s.id} scene={s} count={count} onGen={() => genScene(s.id)} onChoose={(vid) => choose(s.id, vid)} onFeedback={(fb) => feedback(s.id, fb)} />
+          <SceneRow key={s.id} scene={s} count={count} onGen={() => genScene(s.id)} onChoose={(vid) => choose(s.id, vid)} onFeedback={(fb) => feedback(s.id, fb)} onEdit={(patch) => editScene(s.id, patch)} />
         ))}
       </div>
 
@@ -210,30 +254,58 @@ function Seg({ label, value, options, onChange }: { label: string; value: string
   );
 }
 
-function SceneRow({ scene, count, onGen, onChoose, onFeedback }: {
-  scene: Scene; count: number; onGen: () => void; onChoose: (vid: string) => void; onFeedback: (fb: string) => void;
+function SceneRow({ scene, count, onGen, onChoose, onFeedback, onEdit }: {
+  scene: Scene; count: number; onGen: () => void; onChoose: (vid: string) => void; onFeedback: (fb: string) => void; onEdit: (patch: Record<string, unknown>) => void;
 }) {
   const [fb, setFb] = useState("");
   const [showFb, setShowFb] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [copy, setCopy] = useState(scene.copy);
+  const [visual, setVisual] = useState(scene.visual);
+  const [transitionToNext, setTransition] = useState(scene.transitionToNext);
+
+  function saveEdit() {
+    onEdit({ copy, visual, transitionToNext });
+    setEditing(false);
+  }
 
   return (
     <div className="card" style={{ padding: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: "30px 1.1fr 1.6fr auto", gap: 14, alignItems: "start" }}>
         <div style={{ fontSize: 20, fontWeight: 800, color: "var(--muted)" }}>{scene.n}</div>
-        <div>
-          <div className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Copy / VO</div>
-          <div style={{ fontSize: 13 }}>{scene.copy}</div>
-          <div className="chip" style={{ marginTop: 8 }}>{scene.duration}s</div>
-        </div>
-        <div>
-          <div className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Visual</div>
-          <div style={{ fontSize: 13 }}>{scene.visual}</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>↪ transition: {scene.transitionToNext}</div>
-        </div>
+        {editing ? (
+          <div style={{ gridColumn: "2 / 4", display: "flex", flexDirection: "column", gap: 8 }}>
+            <label className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Copy / VO</label>
+            <textarea className="input" rows={2} value={copy} onChange={(e) => setCopy(e.target.value)} />
+            <label className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Visual</label>
+            <textarea className="input" rows={3} value={visual} onChange={(e) => setVisual(e.target.value)} />
+            <label className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Transition into next</label>
+            <textarea className="input" rows={2} value={transitionToNext} onChange={(e) => setTransition(e.target.value)} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-accent btn-sm" onClick={saveEdit}>Save</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setCopy(scene.copy); setVisual(scene.visual); setTransition(scene.transitionToNext); setEditing(false); }}>Cancel</button>
+              {scene.variants.length > 0 && <span className="muted" style={{ fontSize: 11, alignSelf: "center" }}>edits apply to the next regenerate</span>}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div>
+              <div className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Copy / VO</div>
+              <div style={{ fontSize: 13 }}>{scene.copy}</div>
+              <div className="chip" style={{ marginTop: 8 }}>{scene.duration}s</div>
+            </div>
+            <div>
+              <div className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Visual</div>
+              <div style={{ fontSize: 13 }}>{scene.visual}</div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>↪ transition: {scene.transitionToNext}</div>
+            </div>
+          </>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
           <button className="btn btn-accent btn-sm" onClick={onGen} disabled={scene.generating}>
             {scene.generating ? "…" : scene.variants.length ? `+${count} more` : `Generate ${count}`}
           </button>
+          {!editing && <button className="btn btn-sm" onClick={() => setEditing(true)}>Edit text</button>}
           {scene.variants.length > 0 && (
             <button className="btn btn-sm" onClick={() => setShowFb((v) => !v)}>Give feedback</button>
           )}
