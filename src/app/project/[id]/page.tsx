@@ -157,22 +157,22 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         </span>
       </div>
 
-      {/* storyboard-level iteration — the cheapest place to improve (before any image is generated) */}
+      {/* The storyboard is already developed + self-critiqued by the brain. These are optional extra iterations. */}
       <div className="card" style={{ padding: "10px 12px", marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button className="btn btn-accent" onClick={() => reviseStoryboard({ auto: true })} disabled={revising} title="Claude critiques the storyboard against elite marketing principles and rewrites it sharper — no note needed">
-          {revising ? "Working…" : "✨ Improve with AI"}
-        </button>
-        <span className="muted" style={{ fontSize: 12 }}>or tell it exactly what to change →</span>
+        <span className="muted" style={{ fontSize: 12 }}>This storyboard was already AI-developed &amp; self-sharpened. Optional:</span>
         <input
           className="input"
           style={{ flex: 1, minWidth: 240 }}
-          placeholder="e.g. 'open mid-workout instead of the mirror', 'make scene 4 the mechanism', 'punchier hook'"
+          placeholder="Tell it what to change — e.g. 'open mid-workout instead of the mirror', 'punchier hook', 'make scene 4 the mechanism'"
           value={sbNote}
           onChange={(e) => setSbNote(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && sbNote.trim()) reviseStoryboard({ feedback: sbNote }); }}
         />
-        <button className="btn" onClick={() => reviseStoryboard({ feedback: sbNote })} disabled={revising || !sbNote.trim()}>
-          Revise with note
+        <button className="btn btn-accent" onClick={() => reviseStoryboard({ feedback: sbNote })} disabled={revising || !sbNote.trim()}>
+          {revising ? "Working…" : "Revise with note"}
+        </button>
+        <button className="btn" onClick={() => reviseStoryboard({ auto: true })} disabled={revising} title="Run another ruthless AI critique-and-rewrite pass">
+          ✨ Push further
         </button>
       </div>
 

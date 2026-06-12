@@ -126,6 +126,8 @@ ${COPY_PRINCIPLES}
 
 ${IMAGE_DIRECTION}
 
+${EVAL_RUBRIC}
+
 ${brandContext(input.brandId)}
 
 ANIMATION STYLE: ${input.styleName}
@@ -135,7 +137,13 @@ ${input.characterSheets.length ? "CHARACTERS IN THIS AD:\n" + input.characterShe
 THE IDEA FROM THE USER:
 ${input.vision}
 
-FIRST (silently, before scenes): lock the concept — WHO exactly, the ONE sharp angle (consider 2–3, build on the best — never the obvious first idea), the HOOK archetype, the mechanism + recognizable proof, the format. THEN write the scenes from that locked concept.
+YOUR INTERNAL PROCESS (do all of this silently before you output — the user only ever sees the final, already-improved result; never hand back a "fine" first draft):
+  1. Develop 2–3 genuinely DISTINCT angles for WHO + the sharp idea. Pick the strongest — never the obvious first one.
+  2. Lock the concept: WHO exactly, the ONE angle, the HOOK archetype, the mechanism + recognizable proof, the format.
+  3. Draft the full storyboard.
+  4. RUTHLESSLY score your draft against the SELF-CRITIQUE RUBRIC above. Find its 2–3 weakest points (usually a soft hook, a diluted idea, a missing mechanism, asserted-not-recognized proof, or a surface-level desire).
+  5. Rewrite to fix them. Repeat until it would genuinely make a sharp media buyer stop scrolling and bet money it gets watched to the end.
+  6. Output ONLY that final, sharpened storyboard.
 
 Create a storyboard of exactly ${count} scenes. Rules:
 - Scene 1 IS the hook delivered in the first frame — it must stop the exact person in WHO and make them feel something instantly. No slow intro, no logo, no throat-clearing.
