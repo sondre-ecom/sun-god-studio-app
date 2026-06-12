@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { db, User } from "./store";
 import { COPY_PRINCIPLES } from "./copywriting";
+import { META_AD_CRAFT, IMAGE_DIRECTION } from "./adcraft";
 
 const MODEL = process.env.BRAIN_MODEL || "claude-fable-5";
 
@@ -114,9 +115,13 @@ export async function makeStoryboard(input: {
   infinityLoop: boolean;
 }, auth: BrainAuth): Promise<StoryboardOut> {
   const count = input.sceneCount === "auto" ? "5 to 7" : String(input.sceneCount);
-  const prompt = `You are an elite direct-response animated-ad director for paid social (Meta/TikTok, 9:16 vertical).
+  const prompt = `You are one of the best paid-social creative directors in the world — elite at Meta/TikTok direct-response (9:16 vertical). You make ads that stop the scroll and sell. You do NOT produce safe, generic, "mid" concepts.
+
+${META_AD_CRAFT}
 
 ${COPY_PRINCIPLES}
+
+${IMAGE_DIRECTION}
 
 ${brandContext(input.brandId)}
 
@@ -127,9 +132,12 @@ ${input.characterSheets.length ? "CHARACTERS IN THIS AD:\n" + input.characterShe
 THE IDEA FROM THE USER:
 ${input.vision}
 
+FIRST (silently, before scenes): lock the concept — WHO exactly, the ONE sharp angle (consider 2–3, build on the best — never the obvious first idea), the HOOK archetype, the mechanism + recognizable proof, the format. THEN write the scenes from that locked concept.
+
 Create a storyboard of exactly ${count} scenes. Rules:
-- Scene 1 is the HOOK: must stop the scroll in frame one, label who it's for, paint a picture.
-- Escalate emotionally scene by scene; last scene is the product/CTA frame.
+- Scene 1 IS the hook delivered in the first frame — it must stop the exact person in WHO and make them feel something instantly. No slow intro, no logo, no throat-clearing.
+- Escalate the tension scene by scene, then earn the relief; last scene is the product-as-lever + one clear next step.
+- Every "visual" must be a fully-directed cinematic shot (subject + specific facial emotion + 9:16 framing + directional lighting + shallow depth + texture/detail + color grade) per the IMAGE DIRECTION above — not a flat label.
 - FOLLOW THE BRIEF'S APPROACH. If the brief asks for science/mechanism, a literal depiction, or recognizable real-life proof, do exactly that — show the real subject and the real phenomenon. Do NOT invent a metaphor, mascot, town, weather, or fantasy world unless the brief explicitly asks for one. Honor the product's real usage ritual (e.g. a daily powder stirred into water) so the format reads correctly.
 - Each scene gets ONE keyframe still. Between consecutive scenes a video model animates from scene N's exact frame to scene N+1's exact frame — so every "transitionToNext" must describe a PHYSICALLY ANIMATABLE in-between. That can be a literal continuity move (match-cut, a time-of-day change, the same subject visibly changing state, a camera push) OR — only if the brief wants it — a morph. Direct the in-between like a director.
 ${input.infinityLoop ? "- INFINITY LOOP MODE: the LAST scene must be composed so it can flow back into scene 1 seamlessly (similar framing/palette) — write the last scene's transitionToNext as the journey back into scene 1's exact frame." : ""}
@@ -150,7 +158,9 @@ Respond with ONLY this JSON, no commentary:
  * concrete *animatable* imagery, a style, and an ending on the product.
  */
 export async function craftVisionPrompt(idea: string, auth: BrainAuth): Promise<string> {
-  const prompt = `You are a world-class direct-response creative director who writes the single best possible "vision" brief for an AI animated-ad generator. The user gives a rough idea; you return ONE tight, vivid paragraph (90–160 words) they can paste straight into the generator.
+  const prompt = `You are one of the best paid-social creative directors in the world. You write the single best possible "vision" brief for an AI animated-ad generator. The user gives a rough idea; you return ONE tight, vivid paragraph (90–160 words) they can paste straight into the generator. It must be a SHARP concept — a specific person, one strong angle, a scroll-stopping hook — never a safe/generic idea.
+
+${META_AD_CRAFT}
 
 ${COPY_PRINCIPLES}
 

@@ -4,6 +4,7 @@
  * disclaimer is auto-prepended when a prompt contains terms that commonly trip
  * generation filters, so legitimate creative/educational work isn't needlessly blocked.
  */
+import { QUALITY_SUFFIX } from "./adcraft";
 
 const FLAG_TERMS = [
   "blood", "wound", "injur", "needle", "syringe", "pill", "drug", "medic", "surgery", "scar",
@@ -30,6 +31,7 @@ export function buildImagePrompt(opts: {
   if (opts.styleBlock) parts.push(opts.styleBlock.trim());
   if (opts.characterSheet) parts.push("Characters: " + opts.characterSheet.trim());
   parts.push(opts.visual.trim());
+  parts.push(QUALITY_SUFFIX); // push premium production quality on every still
   const body = parts.join("\n\n");
   if (opts.forceDisclaimer || needsDisclaimer(body)) return DISCLAIMER + "\n\n" + body;
   return body;
