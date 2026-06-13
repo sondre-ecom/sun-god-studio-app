@@ -88,6 +88,9 @@ export default function Dashboard() {
     return s?.variants.find((v) => v.src)?.src;
   }
 
+  const drafts = projects.filter((p) => p.status !== "done");
+  const finished = projects.filter((p) => p.status === "done");
+
   return (
     <div style={{ padding: "26px 30px", maxWidth: 1100 }}>
       <h1 style={{ fontSize: 26, fontWeight: 800, margin: "0 0 4px" }}>New animated ad</h1>
@@ -187,43 +190,58 @@ export default function Dashboard() {
         {err && <div style={{ color: "#ff6b6b", fontSize: 13, marginTop: 10 }}>{err}</div>}
       </div>
 
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: "30px 0 12px" }}>Your ads</h2>
       {projects.length === 0 ? (
-        <p className="muted" style={{ fontSize: 14 }}>No ads yet. Create your first one above.</p>
+        <>
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: "30px 0 12px" }}>Your ads</h2>
+          <p className="muted" style={{ fontSize: 14 }}>No ads yet. Create your first one above.</p>
+        </>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 14 }}>
-          {projects.map((p) => (
-            <a
-              key={p.id}
-              href={`/project/${p.id}`}
-              className="card"
-              style={{ overflow: "hidden", textDecoration: "none", color: "inherit" }}
-            >
-              <div style={{ aspectRatio: "9/16", background: "var(--bg-2)", display: "grid", placeItems: "center", overflow: "hidden" }}>
-                {p.finalUrl ? (
-                  <video src={p.finalUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
-                ) : thumb(p) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumb(p)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span className="muted" style={{ fontSize: 12 }}>storyboard</span>
-                )}
+        <>
+          {drafts.length > 0 && (
+            <>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "30px 0 4px" }}>Drafts</h2>
+              <p className="muted" style={{ fontSize: 12, margin: "0 0 12px" }}>In progress — saved automatically. Pick any up where you left off.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 14 }}>
+                {drafts.map(renderCard)}
               </div>
-              <div style={{ padding: "10px 12px" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {p.title}
-                </div>
-                <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                  <span className={p.status === "done" ? "chip chip-ok" : "chip"}>{p.status}</span>
-                  {p.infinityLoop && <span className="chip chip-accent">∞ loop</span>}
-                </div>
+            </>
+          )}
+          {finished.length > 0 && (
+            <>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "30px 0 12px" }}>Finished ads</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 14 }}>
+                {finished.map(renderCard)}
               </div>
-            </a>
-          ))}
-        </div>
+            </>
+          )}
+        </>
       )}
     </div>
   );
+
+  function renderCard(p: ProjectCard) {
+    return (
+      <a key={p.id} href={`/project/${p.id}`} className="card" style={{ overflow: "hidden", textDecoration: "none", color: "inherit" }}>
+        <div style={{ aspectRatio: "9/16", background: "var(--bg-2)", display: "grid", placeItems: "center", overflow: "hidden" }}>
+          {p.finalUrl ? (
+            <video src={p.finalUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
+          ) : thumb(p) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={thumb(p)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span className="muted" style={{ fontSize: 12 }}>storyboard</span>
+          )}
+        </div>
+        <div style={{ padding: "10px 12px" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</div>
+          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+            <span className={p.status === "done" ? "chip chip-ok" : "chip"}>{p.status === "done" ? "✓ Done" : "Draft"}</span>
+            {p.infinityLoop && <span className="chip chip-accent">∞ loop</span>}
+          </div>
+        </div>
+      </a>
+    );
+  }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

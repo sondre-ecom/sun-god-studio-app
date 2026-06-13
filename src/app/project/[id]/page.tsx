@@ -123,7 +123,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
         <Link href="/" className="btn btn-ghost btn-sm">← Dashboard</Link>
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{project.title}</h1>
-        <span className={project.status === "done" ? "chip chip-ok" : "chip chip-accent"}>{project.status}</span>
+        <span className={project.status === "done" ? "chip chip-ok" : "chip chip-accent"}>{project.status === "done" ? "✓ Done" : "Draft"}</span>
+        <span className="chip chip-ok" title="Every change saves automatically — you can leave this page and come back anytime.">✓ Auto-saved</span>
         {project.infinityLoop && <span className="chip chip-accent">∞ loop</span>}
         <Link href={`/infinity-loop?p=${id}`} className="btn btn-ghost btn-sm" style={{ marginLeft: "auto" }}>
           Open Infinity Loop canvas →
