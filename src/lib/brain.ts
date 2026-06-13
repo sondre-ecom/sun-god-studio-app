@@ -4,6 +4,7 @@ import { db, User } from "./store";
 import { COPY_PRINCIPLES } from "./copywriting";
 import { META_AD_CRAFT, IMAGE_DIRECTION } from "./adcraft";
 import { EVOLVE_PLAYBOOK, EVAL_RUBRIC } from "./playbook";
+import { HEADLINE_CRAFT } from "./headline-craft";
 
 const MODEL = process.env.BRAIN_MODEL || "claude-fable-5";
 
@@ -120,6 +121,8 @@ export async function makeStoryboard(input: {
 
 ${EVOLVE_PLAYBOOK}
 
+${HEADLINE_CRAFT}
+
 ${META_AD_CRAFT}
 
 ${COPY_PRINCIPLES}
@@ -176,6 +179,8 @@ export async function reviseStoryboard(input: {
 
 ${EVOLVE_PLAYBOOK}
 
+${HEADLINE_CRAFT}
+
 ${META_AD_CRAFT}
 
 ${COPY_PRINCIPLES}
@@ -212,6 +217,8 @@ export async function improveStoryboard(input: {
 
 ${EVOLVE_PLAYBOOK}
 
+${HEADLINE_CRAFT}
+
 ${META_AD_CRAFT}
 
 ${COPY_PRINCIPLES}
@@ -246,6 +253,8 @@ export async function craftVisionPrompt(idea: string, auth: BrainAuth): Promise<
   const prompt = `You are one of the best paid-social creative directors in the world. You write the single best possible "vision" brief for an AI animated-ad generator. The user gives a rough idea; you return ONE tight, vivid paragraph (90–160 words) they can paste straight into the generator. It must be a SHARP concept — a specific person, one strong angle, a scroll-stopping hook — never a safe/generic idea.
 
 ${EVOLVE_PLAYBOOK}
+
+${HEADLINE_CRAFT}
 
 ${META_AD_CRAFT}
 

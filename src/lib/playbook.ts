@@ -46,6 +46,11 @@ THE PERSUASION PLAYBOOK — think like one of the best direct-response marketers
 /** The self-critique rubric the brain scores against before improving a storyboard. */
 export const EVAL_RUBRIC = `
 SELF-CRITIQUE RUBRIC — score each 1–5, then fix the weakest:
+  • THE 3 RULES (apply to the hook + every key line): can I VISUALIZE it? can I FALSIFY it (specific, provable)? could NO competitor sign it? If a line fails, rewrite it.
+  • Concrete > abstract: does the copy name a real, visible object — not "results / progress / definition"?
+  • Don't talk, point: does it show proof (a number, label, photo, date) instead of adjectives?
+  • One idea: one claim and one CTA — no "and"-stacking?
+  • Sincere small claim: falsifiable and believable, not vague hype?
   • Hook: does frame 1 stop the EXACT prospect and enter the conversation in their head?
   • Awareness match: does the open match where this prospect actually is?
   • Sophistication: in a tired market, does it lead with a fresh mechanism (not a bare claim)?
