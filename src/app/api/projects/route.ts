@@ -25,6 +25,16 @@ export async function POST(req: NextRequest) {
   const style = d.styles.find((s) => s.id === body.styleId) || d.styles[0];
   const characters = (body.characterIds || []).map((id: string) => d.characters.find((c) => c.id === id)).filter(Boolean);
 
+  // Length-driven: derive scene count + per-clip seconds from a target total length (sec).
+  // Each transition clip runs ~6s, and N scenes make N−1 clips, so length ≈ (scenes−1) × clipDuration.
+  let sceneCount: number | "auto" = body.sceneCount ?? "auto";
+  let clipDuration = body.clipDuration ?? 5;
+  if (body.lengthSec) {
+    const lengthSec = Math.min(150, Math.max(10, Number(body.lengthSec)));
+    sceneCount = Math.min(26, Math.max(3, Math.round(lengthSec / 6) + 1));
+    clipDuration = Math.min(10, Math.max(3, Math.round(lengthSec / Math.max(1, sceneCount - 1))));
+  }
+
   let sb;
   try {
     const auth = resolveBrainAuth(u);
@@ -34,8 +44,8 @@ export async function POST(req: NextRequest) {
       styleName: style.name,
       styleBlock: style.block,
       characterSheets: characters.map((c: { name: string; sheet: string }) => `${c.name}: ${c.sheet}`),
-      sceneCount: body.sceneCount ?? "auto",
-      clipDuration: body.clipDuration ?? 5,
+      sceneCount,
+      clipDuration,
       infinityLoop: !!body.infinityLoop,
     }, auth);
   } catch (e) {

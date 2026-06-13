@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [brandId, setBrandId] = useState("");
   const [styleId, setStyleId] = useState("");
   const [imageModel, setImageModel] = useState<"nano_banana_pro" | "gpt_image_2">("nano_banana_pro");
-  const [sceneCount, setSceneCount] = useState<"auto" | number>("auto");
+  const [lengthSec, setLengthSec] = useState(30);
   const [infinityLoop, setInfinityLoop] = useState(false);
   const [pickedChars, setPickedChars] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
@@ -58,7 +58,7 @@ export default function Dashboard() {
         brandId: brandId || undefined,
         styleId,
         imageModel,
-        sceneCount,
+        lengthSec,
         infinityLoop,
         characterIds: pickedChars,
       });
@@ -135,17 +135,21 @@ export default function Dashboard() {
               <option value="gpt_image_2">GPT Image 2 · high</option>
             </select>
           </Field>
-          <Field label="Scenes">
-            <select
-              className="select"
-              value={String(sceneCount)}
-              onChange={(e) => setSceneCount(e.target.value === "auto" ? "auto" : Number(e.target.value))}
-            >
-              <option value="auto">Auto (5–7)</option>
-              {[3, 4, 5, 6, 7, 8, 10, 12].map((n) => (
-                <option key={n} value={n}>{n} scenes</option>
+          <Field label="Length">
+            <select className="select" value={lengthSec} onChange={(e) => setLengthSec(Number(e.target.value))}>
+              {[
+                { s: 15, l: "15 sec" },
+                { s: 30, l: "30 sec" },
+                { s: 45, l: "45 sec" },
+                { s: 60, l: "1:00 min" },
+                { s: 90, l: "1:30 min" },
+                { s: 120, l: "2:00 min" },
+                { s: 150, l: "2:30 min" },
+              ].map((o) => (
+                <option key={o.s} value={o.s}>{o.l}</option>
               ))}
             </select>
+            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>≈ {Math.min(26, Math.max(3, Math.round(lengthSec / 6) + 1))} scenes</div>
           </Field>
         </div>
 

@@ -6,7 +6,7 @@ import { META_AD_CRAFT, IMAGE_DIRECTION } from "./adcraft";
 import { EVOLVE_PLAYBOOK, EVAL_RUBRIC } from "./playbook";
 import { HEADLINE_CRAFT } from "./headline-craft";
 
-const MODEL = process.env.BRAIN_MODEL || "claude-fable-5";
+const MODEL = process.env.BRAIN_MODEL || "claude-opus-4-8";
 
 /** Per-user brain credentials. members must bring their own key; admin may fall back. */
 export interface BrainAuth {
