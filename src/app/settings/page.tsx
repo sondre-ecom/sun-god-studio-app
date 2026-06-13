@@ -5,6 +5,35 @@ import { jget, jpost, jput, jdel } from "@/lib/api";
 
 interface Brand { id: string; name: string; context: string; voc?: string }
 
+// Read uploaded text files into one labelled string (client-side; nothing leaves the browser until Save).
+async function readFilesToText(files: FileList): Promise<string> {
+  const parts: string[] = [];
+  for (const f of Array.from(files)) {
+    const text = await f.text();
+    parts.push(`## ${f.name}\n${text.trim()}`);
+  }
+  return parts.join("\n\n");
+}
+
+function UploadButton({ onText, label = "📎 Upload file(s)" }: { onText: (t: string) => void; label?: string }) {
+  return (
+    <label className="btn btn-sm" style={{ cursor: "pointer" }}>
+      {label}
+      <input
+        type="file"
+        multiple
+        accept=".txt,.md,.markdown,.csv,.json,text/*"
+        style={{ display: "none" }}
+        onChange={async (e) => {
+          const files = e.target.files;
+          if (files?.length) onText(await readFilesToText(files));
+          e.target.value = "";
+        }}
+      />
+    </label>
+  );
+}
+
 export default function SettingsPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -105,16 +134,23 @@ export default function SettingsPage() {
 
       <div className="card" style={{ padding: 16 }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Brands</div>
-        <p className="muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
-          A brand&apos;s context (positioning, avatar, product, what to say / avoid) is fed to the brain when it writes
-          storyboards, so every ad stays on-message. Workspace <code>positioning.md</code> is auto-included when present.
+        <p className="muted" style={{ fontSize: 13, margin: "0 0 6px" }}>
+          A brand&apos;s context + Voice of Customer is fed to the brain when it writes storyboards for <strong>you</strong>, so your ads
+          sound like your customers. <strong>Upload or paste your own files</strong> below.
+        </p>
+        <p style={{ fontSize: 12, margin: "0 0 12px", padding: "8px 10px", borderRadius: 8, background: "rgba(74,222,128,.08)", border: "1px solid rgba(74,222,128,.3)" }}>
+          🔒 <strong>Your data stays in your account only.</strong> It is never added to the shared app brain and no other user can see it.
+          The brain&apos;s skill comes from general marketing craft — your uploads personalize <em>only your</em> ads.
         </p>
 
         <div style={{ display: "grid", gap: 8, marginBottom: 18 }}>
           <input className="input" placeholder="Brand name (e.g. Low Tide)" value={name} onChange={(e) => setName(e.target.value)} />
           <textarea className="input" rows={3} placeholder="Positioning, avatar, product, tone, claims…" value={context} onChange={(e) => setContext(e.target.value)} style={{ resize: "vertical" }} />
-          <textarea className="input" rows={3} placeholder={"Voice of Customer — real customer quotes, grouped by avatar/SA. The brain writes hooks in these exact words."} value={voc} onChange={(e) => setVoc(e.target.value)} style={{ resize: "vertical" }} />
-          <div><button className="btn btn-accent" onClick={addBrand} disabled={!name.trim()}>Add brand</button></div>
+          <textarea className="input" rows={3} placeholder={"Voice of Customer — real customer quotes, grouped by avatar/SA. The brain writes hooks in these exact words. (Or upload files →)"} value={voc} onChange={(e) => setVoc(e.target.value)} style={{ resize: "vertical" }} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <UploadButton label="📎 Upload VOC / brand files" onText={(t) => setVoc((v) => (v ? v + "\n\n" : "") + t)} />
+            <button className="btn btn-accent" onClick={addBrand} disabled={!name.trim()}>Add brand</button>
+          </div>
         </div>
 
         {brands.map((b) => (
@@ -139,6 +175,7 @@ function BrandEditor({ brand, onSave, onDelete }: { brand: Brand; onSave: (b: Br
       <textarea className="input" rows={4} value={voc} onChange={(e) => setVoc(e.target.value)} placeholder={"SA1 — Creatine Hostage:\n\"it's mostly waterweight, I don't like the bloated look either\"\n\nSA2 — Betrayed Veteran:\n\"I look more cut in the morning than later in the day\""} style={{ resize: "vertical" }} />
       <div style={{ display: "flex", gap: 8 }}>
         <button className="btn btn-accent btn-sm" disabled={!dirty} onClick={() => onSave({ ...brand, name, context, voc })}>Save</button>
+        <UploadButton label="📎 Add file(s) to VOC" onText={(t) => setVoc((v) => (v ? v + "\n\n" : "") + t)} />
         <button className="btn btn-ghost btn-sm btn-danger" onClick={onDelete}>Delete</button>
       </div>
     </div>
