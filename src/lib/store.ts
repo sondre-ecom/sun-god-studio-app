@@ -192,8 +192,17 @@ export function db(): DB {
   return cache!;
 }
 
+let lastBackup = 0;
 function persist() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+  // Keep a rolling backup of the last-known-good DB (at most once/minute) so a bad write or
+  // edit is always recoverable. Atomic tmp→rename below already prevents mid-write corruption.
+  try {
+    if (fs.existsSync(DB_PATH) && Date.now() - lastBackup > 60000) {
+      fs.copyFileSync(DB_PATH, DB_PATH + ".bak");
+      lastBackup = Date.now();
+    }
+  } catch {}
   const tmp = DB_PATH + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(cache, null, 2));
   fs.renameSync(tmp, DB_PATH);
