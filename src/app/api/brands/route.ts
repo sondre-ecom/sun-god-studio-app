@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const u = await currentUser();
   if (!u) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const b = await req.json();
-  const brand = { id: uid(), name: b.name || "Untitled brand", context: b.context || "", ownerId: u.id, createdAt: Date.now() };
+  const brand = { id: uid(), name: b.name || "Untitled brand", context: b.context || "", voc: b.voc || "", ownerId: u.id, createdAt: Date.now() };
   db().brands.push(brand);
   save();
   return NextResponse.json({ brand });
@@ -28,7 +28,7 @@ export async function PUT(req: NextRequest) {
   const brand = db().brands.find((x) => x.id === b.id);
   if (!brand) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (u.role !== "admin" && brand.ownerId && brand.ownerId !== u.id) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  Object.assign(brand, { name: b.name ?? brand.name, context: b.context ?? brand.context });
+  Object.assign(brand, { name: b.name ?? brand.name, context: b.context ?? brand.context, voc: b.voc ?? brand.voc });
   save();
   return NextResponse.json({ brand });
 }

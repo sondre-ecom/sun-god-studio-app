@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { jget, jpost, jput, jdel } from "@/lib/api";
 
-interface Brand { id: string; name: string; context: string }
+interface Brand { id: string; name: string; context: string; voc?: string }
 
 export default function SettingsPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [name, setName] = useState("");
   const [context, setContext] = useState("");
+  const [voc, setVoc] = useState("");
 
   const [hasKey, setHasKey] = useState(false);
   const [role, setRole] = useState<"admin" | "member">("member");
@@ -52,8 +53,8 @@ export default function SettingsPage() {
 
   async function addBrand() {
     if (!name.trim()) return;
-    await jpost("/api/brands", { name, context });
-    setName(""); setContext("");
+    await jpost("/api/brands", { name, context, voc });
+    setName(""); setContext(""); setVoc("");
     load();
   }
   async function saveBrand(b: Brand) {
@@ -110,8 +111,9 @@ export default function SettingsPage() {
         </p>
 
         <div style={{ display: "grid", gap: 8, marginBottom: 18 }}>
-          <input className="input" placeholder="Brand name (e.g. Elvora / Low Tide)" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="input" placeholder="Brand name (e.g. Low Tide)" value={name} onChange={(e) => setName(e.target.value)} />
           <textarea className="input" rows={3} placeholder="Positioning, avatar, product, tone, claims…" value={context} onChange={(e) => setContext(e.target.value)} style={{ resize: "vertical" }} />
+          <textarea className="input" rows={3} placeholder={"Voice of Customer — real customer quotes, grouped by avatar/SA. The brain writes hooks in these exact words."} value={voc} onChange={(e) => setVoc(e.target.value)} style={{ resize: "vertical" }} />
           <div><button className="btn btn-accent" onClick={addBrand} disabled={!name.trim()}>Add brand</button></div>
         </div>
 
@@ -126,13 +128,17 @@ export default function SettingsPage() {
 function BrandEditor({ brand, onSave, onDelete }: { brand: Brand; onSave: (b: Brand) => void; onDelete: () => void }) {
   const [name, setName] = useState(brand.name);
   const [context, setContext] = useState(brand.context);
-  const dirty = name !== brand.name || context !== brand.context;
+  const [voc, setVoc] = useState(brand.voc || "");
+  const dirty = name !== brand.name || context !== brand.context || voc !== (brand.voc || "");
   return (
     <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 12, display: "grid", gap: 8 }}>
       <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+      <label className="muted" style={{ fontSize: 11 }}>Positioning / avatar / product</label>
       <textarea className="input" rows={3} value={context} onChange={(e) => setContext(e.target.value)} style={{ resize: "vertical" }} />
+      <label className="muted" style={{ fontSize: 11 }}>Voice of Customer — real quotes (group by avatar/SA). The brain writes in these words.</label>
+      <textarea className="input" rows={4} value={voc} onChange={(e) => setVoc(e.target.value)} placeholder={"SA1 — Creatine Hostage:\n\"it's mostly waterweight, I don't like the bloated look either\"\n\nSA2 — Betrayed Veteran:\n\"I look more cut in the morning than later in the day\""} style={{ resize: "vertical" }} />
       <div style={{ display: "flex", gap: 8 }}>
-        <button className="btn btn-accent btn-sm" disabled={!dirty} onClick={() => onSave({ ...brand, name, context })}>Save</button>
+        <button className="btn btn-accent btn-sm" disabled={!dirty} onClick={() => onSave({ ...brand, name, context, voc })}>Save</button>
         <button className="btn btn-ghost btn-sm btn-danger" onClick={onDelete}>Delete</button>
       </div>
     </div>

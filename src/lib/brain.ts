@@ -98,6 +98,13 @@ function brandContext(brandId?: string): string {
   const d = db();
   const brand = d.brands.find((b) => b.id === brandId);
   let ctx = brand ? `BRAND: ${brand.name}\n${brand.context}\n` : "";
+  if (brand?.voc?.trim()) {
+    ctx +=
+      "\nVOICE OF CUSTOMER — real phrases this brand's customers actually use (often grouped by avatar/sub-avatar). " +
+      "WRITE THE HOOK AND COPY IN THESE WORDS. Real customer language out-converts clever copy — mirror their exact phrasing, " +
+      "objections, and emotional words for the avatar this ad targets; never flatten them into generic marketing-speak:\n" +
+      brand.voc.trim().slice(0, 6000);
+  }
   // Auto-pull workspace positioning if present
   try {
     const pos = path.join(d.settings.workspacePath, "brand", "positioning.md");

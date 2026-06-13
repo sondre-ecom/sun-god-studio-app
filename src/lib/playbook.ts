@@ -62,4 +62,15 @@ SELF-CRITIQUE RUBRIC — score each 1–5, then fix the weakest:
   • Scroll-stop & sound-off: reads with eyes only, stops the thumb?
   • Specificity: concrete and dimensionalized, not generic?
   • CTA: one clear next step, product as the lever?
+
+THE 9-BOX SHIP GATE (a FAIL on any box = fix before shipping; box 6 and 9 are the ones most quietly failed — be strict):
+  1. Hooks the RIGHT person in the first 1–2s AND keeps them?
+  2. Paints a clear picture in their mind?
+  3. Labels who it's for (names/signals the exact person)?
+  4. Relatable to THIS avatar's real life and real words (use the Voice of Customer if provided) — not a generic person?
+  5. Escalates the claim in a clear, relatable way?
+  6. Does NOT sound like an ad — feels organic/authentic? (If it reads like an ad, it fails.)
+  7. Shows HOW they reach the desire THROUGH the product?
+  8. Does at least one of: tells a story they're invested in · entertains · educates with a believable new mechanism?
+  9. Separates from competition — uses a specific, ownable noun a generic competitor could NOT sign (not just "bloat/water")?
 `.trim();

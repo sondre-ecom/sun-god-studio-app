@@ -24,6 +24,7 @@ export interface Brand {
   id: string;
   name: string;
   context: string; // positioning, avatar, product info — fed to the brain
+  voc?: string; // real voice-of-customer quotes (organize by avatar/SA) — the brain writes in these words
   ownerId?: string;
   createdAt: number;
 }
