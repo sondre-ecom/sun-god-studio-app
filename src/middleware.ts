@@ -8,6 +8,7 @@ const PUBLIC = [
   "/api/auth/login",
   "/api/auth/signup",
   "/api/higgsfield/callback", // OAuth return from Higgsfield
+  "/api/product-image", // public so Higgsfield can fetch product photos to import (non-sensitive, random names)
 ];
 
 export async function middleware(req: NextRequest) {

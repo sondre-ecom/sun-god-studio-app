@@ -4,6 +4,7 @@ import { generateImage } from "@/lib/hf";
 import { buildImagePrompt } from "@/lib/prompt";
 import { serializeProject } from "@/lib/serialize";
 import { userForProject } from "@/lib/access";
+import { productReference } from "@/lib/productref";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (c?.refMediaId) refs.push(c.refMediaId);
   }
 
+  // Real product photo: if this scene shows the product, reference the actual bottle/tub.
+  const pr = await productReference(p, renderUserId, scene.visual, req.nextUrl.origin);
+  if (pr.mediaId) refs.push(pr.mediaId);
+
   const prompt = buildImagePrompt({
     styleBlock: p.styleBlock,
     characterSheet: p.characterSheet,
-    visual: scene.visual,
+    visual: scene.visual + (pr.matchNote ? "\n\n" + pr.matchNote : ""),
     forceDisclaimer: body.disclaimer,
   });
 

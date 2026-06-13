@@ -5,6 +5,7 @@ import { generateImage } from "@/lib/hf";
 import { buildImagePrompt } from "@/lib/prompt";
 import { serializeProject } from "@/lib/serialize";
 import { userForProject } from "@/lib/access";
+import { productReference } from "@/lib/productref";
 
 export const dynamic = "force-dynamic";
 
@@ -43,10 +44,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (c?.refMediaId) refs.push(c.refMediaId);
   }
 
+  const pr = await productReference(p, renderUserId, scene.visual, req.nextUrl.origin);
+  if (pr.mediaId) refs.push(pr.mediaId);
+
   try {
     const ids = await generateImage(renderUserId, {
       model: p.imageModel,
-      prompt: buildImagePrompt({ styleBlock: p.styleBlock, characterSheet: p.characterSheet, visual: scene.visual }),
+      prompt: buildImagePrompt({ styleBlock: p.styleBlock, characterSheet: p.characterSheet, visual: scene.visual + (pr.matchNote ? "\n\n" + pr.matchNote : "") }),
       aspect: p.aspect,
       resolution: p.resolution,
       count: Math.min(4, Math.max(1, count || 2)),

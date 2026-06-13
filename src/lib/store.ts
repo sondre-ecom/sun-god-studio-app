@@ -25,6 +25,9 @@ export interface Brand {
   name: string;
   context: string; // positioning, avatar, product info — fed to the brain
   voc?: string; // real voice-of-customer quotes (organize by avatar/SA) — the brain writes in these words
+  productImage?: string; // filename in MEDIA_DIR/products — the REAL product photo, used as an image reference
+  productMediaId?: string; // cached Higgsfield media id for the product image
+  productMediaOwner?: string; // which user's HF account that media id belongs to
   ownerId?: string;
   createdAt: number;
 }
@@ -147,6 +150,7 @@ export interface DB {
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 export const MEDIA_DIR = path.join(DATA_DIR, "media");
+export const PRODUCTS_DIR = path.join(MEDIA_DIR, "products"); // product reference photos (publicly served so Higgsfield can import them)
 
 export const BUILTIN_STYLES: Omit<StylePreset, "id">[] = [
   { name: "Pixar 3D", builtin: true, block: "High-end 3D animated film still, Pixar/DreamWorks quality, expressive stylized characters with large eyes, soft subsurface-scattered skin, cinematic volumetric lighting, shallow depth of field, vibrant warm color grade, 9:16 vertical composition." },

@@ -3,7 +3,41 @@
 import { useEffect, useState } from "react";
 import { jget, jpost, jput, jdel } from "@/lib/api";
 
-interface Brand { id: string; name: string; context: string; voc?: string }
+interface Brand { id: string; name: string; context: string; voc?: string; productImageUrl?: string }
+
+// Read an image file into a base64 data URL (client-side).
+function readImageDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function ProductImageInput({ url, onPick }: { url?: string; onPick: (dataUrl: string) => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="product" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} />
+      )}
+      <label className="btn btn-sm" style={{ cursor: "pointer" }}>
+        🧴 {url ? "Replace product photo" : "Upload product photo"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          style={{ display: "none" }}
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (f) onPick(await readImageDataUrl(f));
+            e.target.value = "";
+          }}
+        />
+      </label>
+    </div>
+  );
+}
 
 // Read uploaded text files into one labelled string (client-side; nothing leaves the browser until Save).
 async function readFilesToText(files: FileList): Promise<string> {
@@ -40,6 +74,7 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [context, setContext] = useState("");
   const [voc, setVoc] = useState("");
+  const [productImg, setProductImg] = useState("");
 
   const [hasKey, setHasKey] = useState(false);
   const [role, setRole] = useState<"admin" | "member">("member");
@@ -82,8 +117,8 @@ export default function SettingsPage() {
 
   async function addBrand() {
     if (!name.trim()) return;
-    await jpost("/api/brands", { name, context, voc });
-    setName(""); setContext(""); setVoc("");
+    await jpost("/api/brands", { name, context, voc, productImageDataUrl: productImg || undefined });
+    setName(""); setContext(""); setVoc(""); setProductImg("");
     load();
   }
   async function saveBrand(b: Brand) {
@@ -147,6 +182,8 @@ export default function SettingsPage() {
           <input className="input" placeholder="Brand name (e.g. Low Tide)" value={name} onChange={(e) => setName(e.target.value)} />
           <textarea className="input" rows={3} placeholder="Positioning, avatar, product, tone, claims…" value={context} onChange={(e) => setContext(e.target.value)} style={{ resize: "vertical" }} />
           <textarea className="input" rows={3} placeholder={"Voice of Customer — real customer quotes, grouped by avatar/SA. The brain writes hooks in these exact words. (Or upload files →)"} value={voc} onChange={(e) => setVoc(e.target.value)} style={{ resize: "vertical" }} />
+          <label className="muted" style={{ fontSize: 11 }}>Product photo — the real bottle/tub. Scenes that show the product will match this exactly.</label>
+          <ProductImageInput url={productImg || undefined} onPick={setProductImg} />
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <UploadButton label="📎 Upload VOC / brand files" onText={(t) => setVoc((v) => (v ? v + "\n\n" : "") + t)} />
             <button className="btn btn-accent" onClick={addBrand} disabled={!name.trim()}>Add brand</button>
@@ -165,7 +202,8 @@ function BrandEditor({ brand, onSave, onDelete }: { brand: Brand; onSave: (b: Br
   const [name, setName] = useState(brand.name);
   const [context, setContext] = useState(brand.context);
   const [voc, setVoc] = useState(brand.voc || "");
-  const dirty = name !== brand.name || context !== brand.context || voc !== (brand.voc || "");
+  const [productImg, setProductImg] = useState("");
+  const dirty = name !== brand.name || context !== brand.context || voc !== (brand.voc || "") || !!productImg;
   return (
     <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 12, display: "grid", gap: 8 }}>
       <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
@@ -173,8 +211,10 @@ function BrandEditor({ brand, onSave, onDelete }: { brand: Brand; onSave: (b: Br
       <textarea className="input" rows={3} value={context} onChange={(e) => setContext(e.target.value)} style={{ resize: "vertical" }} />
       <label className="muted" style={{ fontSize: 11 }}>Voice of Customer — real quotes (group by avatar/SA). The brain writes in these words.</label>
       <textarea className="input" rows={4} value={voc} onChange={(e) => setVoc(e.target.value)} placeholder={"SA1 — Creatine Hostage:\n\"it's mostly waterweight, I don't like the bloated look either\"\n\nSA2 — Betrayed Veteran:\n\"I look more cut in the morning than later in the day\""} style={{ resize: "vertical" }} />
+      <label className="muted" style={{ fontSize: 11 }}>Product photo — scenes that show the product match this exactly.</label>
+      <ProductImageInput url={productImg || brand.productImageUrl} onPick={setProductImg} />
       <div style={{ display: "flex", gap: 8 }}>
-        <button className="btn btn-accent btn-sm" disabled={!dirty} onClick={() => onSave({ ...brand, name, context, voc })}>Save</button>
+        <button className="btn btn-accent btn-sm" disabled={!dirty} onClick={() => onSave({ ...brand, name, context, voc, productImageDataUrl: productImg || undefined } as Brand)}>Save</button>
         <UploadButton label="📎 Add file(s) to VOC" onText={(t) => setVoc((v) => (v ? v + "\n\n" : "") + t)} />
         <button className="btn btn-ghost btn-sm btn-danger" onClick={onDelete}>Delete</button>
       </div>
