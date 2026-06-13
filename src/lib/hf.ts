@@ -5,6 +5,7 @@
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
 import { db, save, userById, HfAuth } from "./store";
 
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
@@ -179,16 +180,21 @@ export async function callTool(userId: string, shortName: string, args: Record<s
   }
   if (res?.structuredContent) parsed.push(res.structuredContent);
 
-  // Expired/invalid Higgsfield token → drop the cached client (forces a fresh connect + token
-  // refresh) and retry once. If it still fails, the user must reconnect Higgsfield.
+  // Higgsfield returns an expired-token error inside a 200 (not a 401), so the SDK's normal
+  // refresh-on-401 never fires. Detect it and run the OAuth refresh ourselves using the stored
+  // refresh token, then retry once — silently, no manual reconnect needed.
   const flat = JSON.stringify(parsed).toLowerCase();
   if (res?.isError || AUTH_ERROR.test(flat)) {
     if (AUTH_ERROR.test(flat) && !_retried) {
-      reset(userId);
-      return callTool(userId, shortName, args, true);
+      let refreshed = false;
+      try {
+        refreshed = (await auth(providerFor(userId), { serverUrl: serverUrl() })) === "AUTHORIZED";
+      } catch {}
+      reset(userId); // drop the cached client so it reconnects with the refreshed token
+      if (refreshed) return callTool(userId, shortName, args, true);
     }
     if (AUTH_ERROR.test(flat)) {
-      throw new Error("Your Higgsfield connection expired. In the sidebar, click ‘disconnect’ then ‘Connect Higgsfield’ to refresh it, then try again.");
+      throw new Error("Your Higgsfield sign-in expired and couldn't auto-refresh. Click ‘disconnect’ then ‘Connect Higgsfield’ in the sidebar once — after that it should stay connected.");
     }
     throw new Error("Higgsfield error: " + JSON.stringify(parsed).slice(0, 600));
   }
