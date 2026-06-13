@@ -151,7 +151,9 @@ async function listToolDefs(userId: string): Promise<any[]> {
   return defs;
 }
 
-export async function callTool(userId: string, shortName: string, args: Record<string, any>): Promise<any[]> {
+const AUTH_ERROR = /invalid or expired token|unauthor|not authenticated|401|token.*expired|expired.*token/i;
+
+export async function callTool(userId: string, shortName: string, args: Record<string, any>, _retried = false): Promise<any[]> {
   const defs = await listToolDefs(userId);
   const def =
     defs.find((t) => t.name === shortName) ||
@@ -176,7 +178,20 @@ export async function callTool(userId: string, shortName: string, args: Record<s
     }
   }
   if (res?.structuredContent) parsed.push(res.structuredContent);
-  if (res?.isError) throw new Error("Higgsfield error: " + JSON.stringify(parsed).slice(0, 600));
+
+  // Expired/invalid Higgsfield token → drop the cached client (forces a fresh connect + token
+  // refresh) and retry once. If it still fails, the user must reconnect Higgsfield.
+  const flat = JSON.stringify(parsed).toLowerCase();
+  if (res?.isError || AUTH_ERROR.test(flat)) {
+    if (AUTH_ERROR.test(flat) && !_retried) {
+      reset(userId);
+      return callTool(userId, shortName, args, true);
+    }
+    if (AUTH_ERROR.test(flat)) {
+      throw new Error("Your Higgsfield connection expired. In the sidebar, click ‘disconnect’ then ‘Connect Higgsfield’ to refresh it, then try again.");
+    }
+    throw new Error("Higgsfield error: " + JSON.stringify(parsed).slice(0, 600));
+  }
   return parsed;
 }
 
