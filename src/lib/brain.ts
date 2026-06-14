@@ -151,7 +151,7 @@ YOUR INTERNAL PROCESS (do all of this silently before you output — the user on
   1. Develop 2–3 genuinely DISTINCT angles for WHO + the sharp idea. Pick the strongest — never the obvious first one.
   2. Lock the concept: WHO exactly, the ONE angle, the HOOK archetype, the mechanism + recognizable proof, the format.
   3. Draft the full storyboard.
-  4. RUTHLESSLY score your draft against the SELF-CRITIQUE RUBRIC above. Find its 2–3 weakest points (usually a soft hook, a diluted idea, a missing mechanism, asserted-not-recognized proof, or a surface-level desire).
+  4. RUTHLESSLY pressure-test your draft against the SELF-CRITIQUE RUBRIC above (in your head only — never write the checks or any score down). Find its 2–3 weakest points (usually a soft hook, a diluted idea, a missing mechanism, asserted-not-recognized proof, or a surface-level desire).
   5. Rewrite to fix them. Repeat until it would genuinely make a sharp media buyer stop scrolling and bet money it gets watched to the end.
   6. Output ONLY that final, sharpened storyboard.
 
@@ -243,7 +243,7 @@ ${input.infinityLoop ? "INFINITY LOOP MODE: the last scene must flow back into s
 CURRENT STORYBOARD (JSON):
 ${JSON.stringify(input.current)}
 
-Silently score it against the rubric, find the 2–3 biggest weaknesses (usually a soft hook, diluted idea, missing mechanism, asserted-not-recognized proof, or a surface-level desire), then output the IMPROVED full storyboard that fixes them — sharper hook that enters the conversation in their head, one big idea, a clear believable mechanism, recognized lived proof, the deeper real desire, cinematic fully-directed visuals. Keep what already works. Do not water it down to be "safe."
+Silently pressure-test it against the rubric (in your head only — never write any scores, ratings, or critique notes), find the 2–3 biggest weaknesses (usually a soft hook, diluted idea, missing mechanism, asserted-not-recognized proof, or a surface-level desire), then output the IMPROVED full storyboard that fixes them — sharper hook that enters the conversation in their head, one big idea, a clear believable mechanism, recognized lived proof, the deeper real desire, cinematic fully-directed visuals. Keep what already works. Do not water it down to be "safe."
 
 Return ONLY this JSON (same schema):
 {"title": "...", "script": "full VO script", "styleBlock": "refined style block", "characterSheet": "consolidated character sheet paragraph (empty if none)", "scenes": [{"copy": "...", "visual": "...", "motion": "...", "transitionToNext": "...", "duration": ${input.clipDuration}}]}`;

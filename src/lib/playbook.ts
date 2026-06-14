@@ -45,7 +45,7 @@ THE PERSUASION PLAYBOOK — think like one of the best direct-response marketers
 
 /** The self-critique rubric the brain scores against before improving a storyboard. */
 export const EVAL_RUBRIC = `
-SELF-CRITIQUE RUBRIC — score each 1–5, then fix the weakest:
+SELF-CRITIQUE RUBRIC — judge each silently and fix any that are weak. NEVER write scores, ratings, numbers, or critique notes anywhere in the output; this checklist is for your own thinking only:
   • THE 3 RULES (apply to the hook + every key line): can I VISUALIZE it? can I FALSIFY it (specific, provable)? could NO competitor sign it? If a line fails, rewrite it.
   • Concrete > abstract: does the copy name a real, visible object — not "results / progress / definition"?
   • Don't talk, point: does it show proof (a number, label, photo, date) instead of adjectives?
